@@ -2,10 +2,10 @@ name: Release using cross build
 
 on:
   push:
-    branches:
-      - main
-    # paths:
-      # - 'release-versions/*'
+    #branches:
+      #- main
+    paths:
+      - 'release-versions/*'
 env:
   CARGO_TERM_COLOR: always
 
@@ -119,8 +119,8 @@ jobs:
       - name: Upload the binary to release
         uses: svenstaro/upload-release-action@v1-release
         with:
-          # repo_token: ${{ secrets.PUBLISH_TOKEN }}
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          repo_token: ${{ secrets.PUBLISH_TOKEN }}
+          # repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: target/${{ matrix.target }}/release/meilisearch
           asset_name: ${{ matrix.asset_name }}
           ## tag: ${{ github.ref }}
@@ -129,8 +129,8 @@ jobs:
         if: matrix.target == 'aarch64-unknown-linux-gnu'
         uses: svenstaro/upload-release-action@v1-release
         with:
-          # repo_token: ${{ secrets.PUBLISH_TOKEN }}
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          repo_token: ${{ secrets.PUBLISH_TOKEN }}
+          # repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: target/${{ matrix.target }}/release/meilisearch-stripped
           asset_name: ${{ matrix.asset_name }}-stripped
           ## tag: ${{ github.ref }}
