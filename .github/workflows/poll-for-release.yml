@@ -1,7 +1,7 @@
-name: Get latest release version
+name: Poll official repo to get the latest release version
 on:
   schedule:
-    - cron: '*/5 * * * *'
+    - cron: '3 * * * *'
 jobs:
   get-version:
     runs-on: ubuntu-latest
@@ -26,5 +26,5 @@ jobs:
           #git branch ${{ env.REMOTE_BRANCH_NAME }}
           #git switch ${{ env.REMOTE_BRANCH_NAME }}
           echo ${{ env.REMOTE_BRANCH_NAME }} > release-versions/meilisearch-latest.txt
-          git commit -am "New release version"
+          git commit -am "New release version ${{ env.REMOTE_BRANCH_NAME }}"
           git push
