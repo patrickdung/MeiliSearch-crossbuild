@@ -32,4 +32,5 @@ jobs:
       - name: Push changes
         uses: ad-m/github-push-action@master
         with:
+          repository:  patrickdung/MeiliSearch-crossbuild 
           github_token: ${{ secrets.PUBLISH_TOKEN }}
