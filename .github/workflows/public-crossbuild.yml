@@ -2,8 +2,8 @@ name: Release using cross build
 
 on:
   push:
-    #branches:
-      #- main
+    branches:
+      - main
     paths:
       - 'release-versions/*'
 env:
