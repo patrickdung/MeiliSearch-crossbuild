@@ -27,4 +27,9 @@ jobs:
           #git switch ${{ env.REMOTE_BRANCH_NAME }}
           echo ${{ env.REMOTE_BRANCH_NAME }} > release-versions/meilisearch-latest.txt
           git commit -am "New release version ${{ env.REMOTE_BRANCH_NAME }}"
-          git push
+          ## by default GH actions push cannot trigger another GH action
+          ##git push
+      - name: Push changes
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.PUBLISH_TOKEN }}
