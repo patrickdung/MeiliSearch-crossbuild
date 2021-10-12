@@ -2,8 +2,10 @@ name: Release using cross build
 
 on:
   push:
-    paths:
-      - 'release-versions/*'
+    branches:
+      - main
+    # paths:
+      # - 'release-versions/*'
 env:
   CARGO_TERM_COLOR: always
 
