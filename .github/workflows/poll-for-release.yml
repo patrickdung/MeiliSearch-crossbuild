@@ -23,8 +23,8 @@ jobs:
         run: |
           git config --global user.name 'Patrick Dung'
           git config --global user.email '38665827+patrickdung@users.noreply.github.com'
-          git branch ${{ env.REMOTE_BRANCH_NAME }}
-          git switch ${{ env.REMOTE_BRANCH_NAME }}
+          #git branch ${{ env.REMOTE_BRANCH_NAME }}
+          #git switch ${{ env.REMOTE_BRANCH_NAME }}
           echo ${{ env.REMOTE_BRANCH_NAME }} > release-versions/meilisearch-latest.txt
           git commit -am "New release version"
           git push

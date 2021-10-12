@@ -4,7 +4,6 @@ on:
   push:
     paths:
       - 'release-versions/*'
-
 env:
   CARGO_TERM_COLOR: always
 
