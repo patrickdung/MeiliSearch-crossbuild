@@ -16,7 +16,7 @@ jobs:
       - name: Check for modified files
         id: git-check
         run: |
-          $([ "${{ env.REMOTE_BRANCH_NAME }}" != "${{ env.LOCAL_BRANCH_NAME }}" ] && echo "true" || echo "false")
+          $( if [ "${{ env.REMOTE_BRANCH_NAME }}" != "${{ env.LOCAL_BRANCH_NAME }}" ]; then echo "true"; else echo "false"; fi )
       - uses: actions/checkout@v2
       - name: Commit latest release version
         if: steps.git-check.outputs.modified == 'true'
