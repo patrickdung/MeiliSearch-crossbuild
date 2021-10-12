@@ -36,11 +36,16 @@ jobs:
             asset_name: meilisearch-linux-amd64-musl
     steps:
 
+      - name: Fetch branch name of latest version
+        run: |
+          curl -sL https://api.github.com/repos/meilisearch/MeiliSearch/releases/latest | \
+          jq -r ".tag_name" > /tmp/meilisearch-latest-branch-name
+          echo "REMOTE_BRANCH_NAME=$(cat /tmp/meilisearch-latest-branch-name)" >> $GITHUB_ENV
       - name: Checkout repository
         uses: actions/checkout@v2
         with:
           repository: meilisearch/MeiliSearch
-          
+          ref: ${{ env.REMOTE_BRANCH_NAME }}
       - name: Add Cross.toml that is not in offical repo
         run: |
           echo '[build.env]' >> Cross.toml
@@ -110,7 +115,6 @@ jobs:
 
       - name: List target output files
         run: ls -lR ./target
-
       - name: Upload the binary to release
         uses: svenstaro/upload-release-action@v1-release
         with:
@@ -118,7 +122,8 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: target/${{ matrix.target }}/release/meilisearch
           asset_name: ${{ matrix.asset_name }}
-          tag: ${{ github.ref }}
+          ## tag: ${{ github.ref }}
+          tag: ${{ env.REMOTE_BRANCH_NAME }}
       - name: Upload stripped binary to release (aarch64 GNU only)
         if: matrix.target == 'aarch64-unknown-linux-gnu'
         uses: svenstaro/upload-release-action@v1-release
@@ -127,4 +132,5 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: target/${{ matrix.target }}/release/meilisearch-stripped
           asset_name: ${{ matrix.asset_name }}-stripped
-          tag: ${{ github.ref }}
+          ## tag: ${{ github.ref }}
+          tag: ${{ env.REMOTE_BRANCH_NAME }}

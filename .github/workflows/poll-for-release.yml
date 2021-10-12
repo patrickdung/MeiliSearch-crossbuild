@@ -1,7 +1,7 @@
 name: Get latest release version
 on:
   schedule:
-    - cron:  '*/5 * * * *'
+    - cron: '*/5 * * * *'
 jobs:
   get-version:
     runs-on: ubuntu-latest
@@ -12,7 +12,7 @@ jobs:
           jq -r ".tag_name" > /tmp/meilisearch-latest-branch-name
           echo "REMOTE_BRANCH_NAME=$(cat /tmp/meilisearch-latest-branch-name)" >> $GITHUB_ENV
           curl -sL https://github.com/patrickdung/MeiliSearch-crossbuild/raw/main/release-versions/meilisearch-latest.txt -o /tmp/meilisearch-local-branch-name
-          echo "LOCAL_BRANCH_NAME=$(cat /tmp/meilisearch-local-branch-name)" >> $GITHUB_ENV          
+          echo "LOCAL_BRANCH_NAME=$(cat /tmp/meilisearch-local-branch-name)" >> $GITHUB_ENV
       - name: Check for modified files
         id: git-check
         run: |
@@ -23,6 +23,8 @@ jobs:
         run: |
           git config --global user.name 'Patrick Dung'
           git config --global user.email '38665827+patrickdung@users.noreply.github.com'
+          git branch ${{ env.REMOTE_BRANCH_NAME }}
+          git switch ${{ env.REMOTE_BRANCH_NAME }}
           echo ${{ env.REMOTE_BRANCH_NAME }} > release-versions/meilisearch-latest.txt
           git commit -am "New release version"
           git push
