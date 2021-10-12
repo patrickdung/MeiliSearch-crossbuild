@@ -1,7 +1,7 @@
 name: Poll official repo to get the latest release version
 on:
   schedule:
-    - cron: '3 * * * *'
+    - cron: '52 * * * *'
 jobs:
   get-version:
     runs-on: ubuntu-latest
