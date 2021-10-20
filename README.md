@@ -1,5 +1,5 @@
 This repo is to build [MeiliSeach](https://github.com/meilisearch/MeiliSearch/releases).
-The official MeiliSearch repositery itself is released by MIT license.
+The official MeiliSearch repository itself is released by MIT license.
 
 This repo is mainly for cross building ARMv8 and MUSL using Rust cross building tools **for my own use**.
 Please use the official binary from MeiliSearch.
