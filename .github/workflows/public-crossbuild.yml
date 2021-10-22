@@ -191,4 +191,4 @@ jobs:
             SOURCE_BINARY_BASEURL=https://github.com/patrickdung/MeiliSearch-crossbuild/releases/download
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: registry.gitlab.com/${{ secrets.GITLAB_USERNAME }}/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}
+          tags: registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}
