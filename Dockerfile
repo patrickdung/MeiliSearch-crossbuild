@@ -9,6 +9,7 @@ ARG MEILISEARCH_VERSION=""
 #ARG ARCH="amd64"
 ARG ARCH=""
 
+# With Docker's buildx, TARGETARCH gives out amd64/arm64
 ARG TARGETARCH
 
 #ARG SOURCE_BINARY_BASEURL="https://github.com/meilisearch/MeiliSearch/releases/download"
@@ -45,15 +46,14 @@ RUN set -eux && \
     # My version uses aarch64 instead of armv8
     # curl -L -v -o /home/meilisearch/bin/meilisearch ${SOURCE_BINARY_BASEURL}/${MEILISEARCH_VERSION}/meilisearch-linux-${ARCH} && \
 
-#RUN set -eux && if [ "${ARCH}" = "x86_64" ] ; then curl -L -v -o /home/meilisearch/bin/meilisearch ${SOURCE_BINARY_BASEURL}/${MEILISEARCH_VERSION}/meilisearch-linux-aarch64; ls -l /home/meilisearch/bin/meilisearch; /usr/bin/aarch64-linux-gnu-strip --strip-debug --target=elf64-littleaarch64 /home/meilisearch/bin/meilisearch; fi
-
-#RUN set -eux && if [ "${ARCH}" = "aarch" ] ; then curl -L -v -o /home/meilisearch/bin/meilisearch ${SOURCE_BINARY_BASEURL}/${MEILISEARCH_VERSION}/meilisearch-linux-amd64; ls -l /home/meilisearch/bin/meilisearch; /usr/bin/strip --strip-debug /home/meilisearch/bin/meilisearch; fi
+##RUN set -eux && if [ "${ARCH}" = "x86_64" ] ; then curl -L -v -o /home/meilisearch/bin/meilisearch ${SOURCE_BINARY_BASEURL}/${MEILISEARCH_VERSION}/meilisearch-linux-aarch64; ls -l /home/meilisearch/bin/meilisearch; /usr/bin/aarch64-linux-gnu-strip --strip-debug --target=elf64-littleaarch64 /home/meilisearch/bin/meilisearch; fi
+##RUN set -eux && if [ "${ARCH}" = "aarch" ] ; then curl -L -v -o /home/meilisearch/bin/meilisearch ${SOURCE_BINARY_BASEURL}/${MEILISEARCH_VERSION}/meilisearch-linux-amd64; ls -l /home/meilisearch/bin/meilisearch; /usr/bin/strip --strip-debug /home/meilisearch/bin/meilisearch; fi
 
 ## Inside GH actions, uname -p => "unknown"
-RUN /bin/uname -m > /tmp/arch
+## RUN /bin/uname -m > /tmp/arch
 
 #RUN set -eux && ARCH=$(cat /tmp/arch) echo TARGETARCH-${TARGETARCH} ARCH-${ARCH} && ARCH=$(cat /tmp/arch) curl -L -v -o /home/meilisearch/bin/meilisearch ${SOURCE_BINARY_BASEURL}/${MEILISEARCH_VERSION}/meilisearch-linux-${ARCH}
-RUN set -eux && curl -L -v -o /home/meilisearch/bin/meilisearch ${SOURCE_BINARY_BASEURL}/${MEILISEARCH_VERSION}/meilisearch-linux-$(/bin/uname -m) && ls -l /home/meilisearch/bin/meilisearch
+RUN set -eux && curl -L -v -o /home/meilisearch/bin/meilisearch ${SOURCE_BINARY_BASEURL}/${MEILISEARCH_VERSION}/meilisearch-linux-$(/bin/uname -m)-stripped && ls -l /home/meilisearch/bin/meilisearch
 
 RUN set -eux && chmod 755 /home/meilisearch/bin/meilisearch
 
