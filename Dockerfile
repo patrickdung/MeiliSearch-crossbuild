@@ -49,11 +49,10 @@ RUN set -eux && \
 
 #RUN set -eux && if [ "${ARCH}" = "aarch" ] ; then curl -L -v -o /home/meilisearch/bin/meilisearch ${SOURCE_BINARY_BASEURL}/${MEILISEARCH_VERSION}/meilisearch-linux-amd64; ls -l /home/meilisearch/bin/meilisearch; /usr/bin/strip --strip-debug /home/meilisearch/bin/meilisearch; fi
 
-# unknown when running in GH actions
-## uname -p => "unknown"
+## Inside GH actions, uname -p => "unknown"
 RUN /bin/uname -m > /tmp/arch
 
-RUN set -eux && echo TARGETARCH-${TARGETARCH} ARCH-${ARCH} && curl -L -v -o /home/meilisearch/bin/meilisearch ${SOURCE_BINARY_BASEURL}/${MEILISEARCH_VERSION}/meilisearch-linux-${ARCH}
+RUN set -eux && ARCH=$(cat /tmp/arch) echo TARGETARCH-${TARGETARCH} ARCH-${ARCH} && ARCH=$(cat /tmp/arch) curl -L -v -o /home/meilisearch/bin/meilisearch ${SOURCE_BINARY_BASEURL}/${MEILISEARCH_VERSION}/meilisearch-linux-${ARCH}
 
 RUN set -eux && chmod 755 /home/meilisearch/bin/meilisearch
 
