@@ -15,7 +15,7 @@ ARG SOURCE_BINARY_BASEURL=""
 RUN set -eux && \
     apt-get -y update && \
     apt-get -y install --no-install-suggests \
-    bash vim-tiny tini curl file procps binutils binutils-aarch64-linux-gnu binutils-multiarch && \
+    bash vim-tiny tini curl file procps binutils binutils-aarch64-linux-gnu binutils-multiarch coreutils && \
     rm -rf /var/lib/apt/lists/* && \
     addgroup \
       --gid 1000 \
