@@ -37,9 +37,9 @@ RUN set -eux && \
     mkdir /home/meilisearch/bin && \
     chmod 755 /home/meilisearch/bin
 
-# Offical
-#https://github.com/meilisearch/MeiliSearch/releases/download/v0.23.0rc0/meilisearch-linux-amd64
-#https://github.com/meilisearch/MeiliSearch/releases/download/v0.23.0rc0/meilisearch-linux-armv8
+## Offical
+##https://github.com/meilisearch/MeiliSearch/releases/download/v0.23.0rc0/meilisearch-linux-amd64
+##https://github.com/meilisearch/MeiliSearch/releases/download/v0.23.0rc0/meilisearch-linux-armv8
 
     # source url uses armv8 instead of arm64
     # My version uses aarch64 instead of armv8
@@ -52,7 +52,8 @@ RUN set -eux && \
 ## Inside GH actions, uname -p => "unknown"
 RUN /bin/uname -m > /tmp/arch
 
-RUN set -eux && ARCH=$(cat /tmp/arch) echo TARGETARCH-${TARGETARCH} ARCH-${ARCH} && ARCH=$(cat /tmp/arch) curl -L -v -o /home/meilisearch/bin/meilisearch ${SOURCE_BINARY_BASEURL}/${MEILISEARCH_VERSION}/meilisearch-linux-${ARCH}
+#RUN set -eux && ARCH=$(cat /tmp/arch) echo TARGETARCH-${TARGETARCH} ARCH-${ARCH} && ARCH=$(cat /tmp/arch) curl -L -v -o /home/meilisearch/bin/meilisearch ${SOURCE_BINARY_BASEURL}/${MEILISEARCH_VERSION}/meilisearch-linux-${ARCH}
+RUN set -eux && curl -L -v -o /home/meilisearch/bin/meilisearch ${SOURCE_BINARY_BASEURL}/${MEILISEARCH_VERSION}/meilisearch-linux-$(/bin/uname -m) && ls -l /home/meilisearch/bin/meilisearch
 
 RUN set -eux && chmod 755 /home/meilisearch/bin/meilisearch
 
