@@ -9,6 +9,8 @@ ARG MEILISEARCH_VERSION=""
 #ARG ARCH="amd64"
 ARG ARCH=""
 
+ARG TARGETARCH
+
 #ARG SOURCE_BINARY_BASEURL="https://github.com/meilisearch/MeiliSearch/releases/download"
 ARG SOURCE_BINARY_BASEURL=""
 
@@ -47,9 +49,10 @@ RUN set -eux && \
 
 #RUN set -eux && if [ "${ARCH}" = "aarch" ] ; then curl -L -v -o /home/meilisearch/bin/meilisearch ${SOURCE_BINARY_BASEURL}/${MEILISEARCH_VERSION}/meilisearch-linux-amd64; ls -l /home/meilisearch/bin/meilisearch; /usr/bin/strip --strip-debug /home/meilisearch/bin/meilisearch; fi
 
-RUN /bin/uname -p > /tmp/arch
+# unknown when running in GH actions
+# RUN /bin/uname -p > /tmp/arch
 
-RUN set -eux && ARCH=$(cat /tmp/arch) echo ${SOURCE_BINARY_BASEURL}/${MEILISEARCH_VERSION}/meilisearch-linux-${ARCH} && ARCH=$(cat /tmp/arch) curl -L -v -o /home/meilisearch/bin/meilisearch ${SOURCE_BINARY_BASEURL}/${MEILISEARCH_VERSION}/meilisearch-linux-${ARCH}
+RUN set -eux && echo ${SOURCE_BINARY_BASEURL}/${MEILISEARCH_VERSION}/meilisearch-linux-${TARGETARCH} && curl -L -v -o /home/meilisearch/bin/meilisearch ${SOURCE_BINARY_BASEURL}/${MEILISEARCH_VERSION}/meilisearch-linux-${TARGETARCH}
 
 RUN set -eux && chmod 755 /home/meilisearch/bin/meilisearch
 
