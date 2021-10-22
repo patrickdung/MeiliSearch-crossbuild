@@ -150,7 +150,24 @@ jobs:
           asset_name: ${{ matrix.asset_name }}-stripped
           ## tag: ${{ github.ref }}
           tag: ${{ env.REMOTE_BRANCH_NAME }}
-      
+          
+  build-docker-image:
+    name: Build Docker Images
+    runs-on: ubuntu-lastest
+    continue-on-error: true
+    steps:    
+      - name: Fetch branch name of latest version
+        run: |
+          curl -sL https://api.github.com/repos/meilisearch/MeiliSearch/releases/latest | \
+          jq -r ".tag_name" > /tmp/meilisearch-latest-branch-name
+          echo "REMOTE_BRANCH_NAME=$(cat /tmp/meilisearch-latest-branch-name)" >> $GITHUB_ENV
+          
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        with:
+          repository: patrickdung/MeiliSearch-crossbuild
+          ref: v0.23.1-testdocker
+          
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
         
