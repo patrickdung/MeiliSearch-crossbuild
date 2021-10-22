@@ -186,7 +186,9 @@ jobs:
         with:
           context: .
           # ARCH
-          build-args: MEILISEARCH_VERSION=${{ env.REMOTE_BRANCH_NAME }},SOURCE_BINARY_BASEURL=https://github.com/patrickdung/MeiliSearch-crossbuild/releases/download
+          build-args: |
+            MEILISEARCH_VERSION=${{ env.REMOTE_BRANCH_NAME }}
+            SOURCE_BINARY_BASEURL=https://github.com/patrickdung/MeiliSearch-crossbuild/releases/download
           platforms: linux/amd64,linux/arm64
           push: false
           tags: ${{ env.REMOTE_BRANCH_NAME }}
