@@ -152,7 +152,7 @@ jobs:
           tag: ${{ env.REMOTE_BRANCH_NAME }}
           
   build-docker-image:
-    #needs: publish-with-crossbuild
+    needs: publish-with-crossbuild
     name: Build Docker Images
     runs-on: ubuntu-latest
     continue-on-error: true
