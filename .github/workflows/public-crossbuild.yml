@@ -54,16 +54,17 @@ jobs:
         with:
           repository: meilisearch/MeiliSearch
           ref: ${{ env.REMOTE_BRANCH_NAME }}
-          
-      - name: Add Cross.toml that is not in offical repo
-        run: |
-          echo '[build.env]' >> Cross.toml
-          echo 'passthrough = [' >> Cross.toml
-          echo '"RUST_BACKTRACE",' >> Cross.toml
-          echo '"CARGO_TERM_COLOR",' >> Cross.toml
-          echo '"RUSTFLAGS",' >> Cross.toml
-          echo '"JEMALLOC_SYS_WITH_LG_PAGE"' >> Cross.toml
-          echo ']' >> Cross.toml
+      
+      # It's in main branch of the MeiliSearch now
+      #- name: Add Cross.toml that is not in offical repo
+      #  run: |
+      #    echo '[build.env]' >> Cross.toml
+      #    echo 'passthrough = [' >> Cross.toml
+      #    echo '"RUST_BACKTRACE",' >> Cross.toml
+      #    echo '"CARGO_TERM_COLOR",' >> Cross.toml
+      #    echo '"RUSTFLAGS",' >> Cross.toml
+      #    echo '"JEMALLOC_SYS_WITH_LG_PAGE"' >> Cross.toml
+      #    echo ']' >> Cross.toml
 
       - name: Installing Rust toolchain
         uses: actions-rs/toolchain@v1
@@ -167,7 +168,7 @@ jobs:
         uses: actions/checkout@v2
         with:
           repository: patrickdung/MeiliSearch-crossbuild
-          ref: v0.23.1-testdocker
+          ref: main
           
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
