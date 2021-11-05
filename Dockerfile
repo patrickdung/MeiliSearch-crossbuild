@@ -18,7 +18,7 @@ ARG SOURCE_BINARY_BASEURL=""
 RUN set -eux && \
     apt-get -y update && \
     apt-get -y install --no-install-suggests \
-    bash vim-tiny tini curl file procps binutils binutils-aarch64-linux-gnu binutils-multiarch coreutils && \
+    bash tini curl file procps binutils binutils-aarch64-linux-gnu binutils-multiarch coreutils && \
     rm -rf /var/lib/apt/lists/* && \
     addgroup \
       --gid 1000 \
@@ -32,7 +32,7 @@ RUN set -eux && \
     mkdir -p /meilisearch /data.ms && \
     chown meilisearch:meilisearch /meilisearch /data.ms
 
-USER 1000:1000
+USER meilisearch
 
 RUN set -eux && \
     mkdir /home/meilisearch/bin && \
