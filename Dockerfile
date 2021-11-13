@@ -32,7 +32,6 @@ RUN set -eux && \
     mkdir -p /meilisearch /data.ms && \
     chown meilisearch:meilisearch /meilisearch /data.ms
 
-#USER 1000:1000
 USER meilisearch
 
 RUN set -eux && \
