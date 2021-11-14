@@ -191,8 +191,25 @@ jobs:
             SOURCE_BINARY_BASEURL=https://github.com/patrickdung/MeiliSearch-crossbuild/releases/download
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}
+          tags: registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}-test
           
+      - name: build local container
+        uses: docker/build-push-action@v2
+        with:
+         tags: localbuild/testimage:latest
+         push: false
+         load: true
+
+      - name: Scan image by Anchore
+        uses: anchore/scan-action@v3
+        id: scan-by-anchore
+        with:
+          image: "localbuild/testimage:latest"
+          acs-report-enable: true
+          
+      - name: Inspect action SARIF report
+        run: cat ${{ steps.scan-by-anchore.outputs.sarif }}
+      
       #- name: Setup Polaris
       #  uses: fairwindsops/polaris@master
       #- name: Check k8s resources by Polaris
