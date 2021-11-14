@@ -34,7 +34,7 @@ RUN set -eux && \
     chown meilisearch:meilisearch /meilisearch /data.ms /home/meilisearch/bin && \
     chmod 755 /home/meilisearch/bin && \
     curl -L -v -o /home/meilisearch/bin/meilisearch ${SOURCE_BINARY_BASEURL}/${MEILISEARCH_VERSION}/meilisearch-linux-$(/bin/uname -m)-stripped \
-    && chown meilisearch:meilisearch /home/meilisearch/bin/meiliserach \
+    && chown meilisearch:meilisearch /home/meilisearch/bin/meilisearch \
     && chmod 755 /home/meilisearch/bin/meilisearch \
     && ls -l /home/meilisearch/bin/meilisearch \
     && apt-get -y upgrade && apt-get -y autoremove && apt-get -y clean && \
