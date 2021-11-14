@@ -18,25 +18,27 @@ ARG SOURCE_BINARY_BASEURL=""
 RUN set -eux && \
     apt-get -y update && \
     apt-get -y install --no-install-suggests \
-    bash tini curl file procps binutils binutils-aarch64-linux-gnu binutils-multiarch coreutils && \
-    rm -rf /var/lib/apt/lists/* && \
-    addgroup \
+    bash tini curl file procps && \
+    groupadd \
       --gid 1000 \
       meilisearch && \
-    adduser \
+    useradd --no-log-init \
+      --create-home \
+      --home-dir /home/meilisearch \
       --shell /bin/bash \
       --uid 1000 \
       --gid 1000 \
-      --disabled-password \
+      --key MAIL_DIR=/dev/null \
       meilisearch && \
-    mkdir -p /meilisearch /data.ms && \
-    chown meilisearch:meilisearch /meilisearch /data.ms
-
-USER meilisearch
-
-RUN set -eux && \
-    mkdir /home/meilisearch/bin && \
-    chmod 755 /home/meilisearch/bin
+    mkdir -p /meilisearch /data.ms /home/meilisearch/bin && \
+    chown meilisearch:meilisearch /meilisearch /data.ms /home/meilisearch/bin && \
+    chmod 755 /home/meilisearch/bin && \
+    curl -L -v -o /home/meilisearch/bin/meilisearch ${SOURCE_BINARY_BASEURL}/${MEILISEARCH_VERSION}/meilisearch-linux-$(/bin/uname -m)-stripped \
+    && chown meilisearch:meilisearch /home/meilisearch/bin/meiliserach \
+    && chmod 755 /home/meilisearch/bin/meilisearch \
+    && ls -l /home/meilisearch/bin/meilisearch \
+    && apt-get -y upgrade && apt-get -y autoremove && apt-get -y clean && \
+    rm -rf /var/lib/apt/lists/*
 
 ## Offical
 ##https://github.com/meilisearch/MeiliSearch/releases/download/v0.23.0rc0/meilisearch-linux-amd64
@@ -52,13 +54,7 @@ RUN set -eux && \
 ## Inside GH actions, uname -p => "unknown"
 ## RUN /bin/uname -m > /tmp/arch
 
-#RUN set -eux && ARCH=$(cat /tmp/arch) echo TARGETARCH-${TARGETARCH} ARCH-${ARCH} && ARCH=$(cat /tmp/arch) curl -L -v -o /home/meilisearch/bin/meilisearch ${SOURCE_BINARY_BASEURL}/${MEILISEARCH_VERSION}/meilisearch-linux-${ARCH}
-RUN set -eux && curl -L -v -o /home/meilisearch/bin/meilisearch ${SOURCE_BINARY_BASEURL}/${MEILISEARCH_VERSION}/meilisearch-linux-$(/bin/uname -m)-stripped && ls -l /home/meilisearch/bin/meilisearch
-
-RUN set -eux && chmod 755 /home/meilisearch/bin/meilisearch
-
-USER root
-RUN set -eux && apt-get -y purge binutils binutils-aarch64-linux-gnu binutils-multiarch
+##RUN set -eux && ARCH=$(cat /tmp/arch) echo TARGETARCH-${TARGETARCH} ARCH-${ARCH} && ARCH=$(cat /tmp/arch) curl -L -v -o /home/meilisearch/bin/meilisearch ${SOURCE_BINARY_BASEURL}/${MEILISEARCH_VERSION}/meilisearch-linux-${ARCH}
 
 USER meilisearch
 VOLUME /data.ms
@@ -68,4 +64,4 @@ ENV     MEILI_HTTP_ADDR 0.0.0.0:7700
 EXPOSE  7700/tcp
 
 ENTRYPOINT ["tini", "--"]
-CMD     /home/meilisearch/bin/meilisearch
+CMD     ["/home/meilisearch/bin/meilisearch"]
