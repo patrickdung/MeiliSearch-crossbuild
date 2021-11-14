@@ -191,25 +191,15 @@ jobs:
             SOURCE_BINARY_BASEURL=https://github.com/patrickdung/MeiliSearch-crossbuild/releases/download
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}-test
-          
-      - name: Build local container
-        uses: docker/build-push-action@v2
-        with:
-          context: .
-          build-args: |
-            MEILISEARCH_VERSION=${{ env.REMOTE_BRANCH_NAME }}
-            SOURCE_BINARY_BASEURL=https://github.com/patrickdung/MeiliSearch-crossbuild/releases/download
-          platforms: linux/amd64,linux/arm64
-          tags: localbuild/testimage:latest
-          push: false
-          load: true
-
+          tags: |
+            registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}-test
+            localhost:5000/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}-test
+            
       - name: Scan image by Anchore
         uses: anchore/scan-action@v3
         id: scan-by-anchore
         with:
-          image: "localbuild/testimage:latest"
+          image: "localhost:5000/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}-test"
           acs-report-enable: true
           
       - name: Inspect action SARIF report
