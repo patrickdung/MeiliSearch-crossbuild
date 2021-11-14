@@ -206,6 +206,7 @@ jobs:
         uses: anchore/scan-action@v3
         id: scan-by-anchore
         with:
+          fail-build: false
           image: "localhost:5000/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}-test"
           acs-report-enable: true
           
