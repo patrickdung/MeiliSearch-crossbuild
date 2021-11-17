@@ -1,4 +1,4 @@
-name: Poll official repo to get the latest release version
+name: Poll (dev-branch) official repo to get the latest release version
 on:
   schedule:
     - cron: '8 * * * *'
