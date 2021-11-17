@@ -199,20 +199,20 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}-test
-            localhost:5000/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}-test
+            registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}-dev
+            localhost:5000/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}-dev
             
       - name: Scan image by Anchore
         uses: anchore/scan-action@v3
         id: scan-by-anchore
         with:
           fail-build: false
-          image: "localhost:5000/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}-test"
+          image: "localhost:5000/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}-dev"
           acs-report-enable: true
           
       - name: Inspect action SARIF report
         run: cat ${{ steps.scan-by-anchore.outputs.sarif }}
-      
+
       #- name: Setup Polaris
       #  uses: fairwindsops/polaris@master
       #- name: Check k8s resources by Polaris
