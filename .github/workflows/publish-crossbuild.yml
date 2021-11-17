@@ -39,7 +39,7 @@ jobs:
             os: ubuntu-latest
             target: x86_64-unknown-linux-musl
             use-cross: true
-            asset_name: meilisearch-linux-amd64-musl
+            asset_name: meilisearch-linux-x86_64-musl
     
     steps:
 
