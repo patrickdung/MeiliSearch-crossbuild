@@ -22,7 +22,7 @@ ARG SOURCE_BINARY_BASEURL=""
 RUN set -eux && \
     apt-get -y update && \
     apt-get -y install --no-install-suggests \
-    bash tini curl file procps && \
+      bash tini curl file procps && \
     groupadd \
       --gid 1000 \
       meilisearch && \
