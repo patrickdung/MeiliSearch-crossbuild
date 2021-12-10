@@ -46,7 +46,6 @@ RUN set -eux && \
     && chown -R meilisearch:meilisearch /home/meilisearch/bin \
     && chmod 755 /home/meilisearch/bin/meilisearch \
     && ls -lR /home/meilisearch/bin \
-    && apt-get -y remove coreutils \
     && apt-get -y upgrade && apt-get -y autoremove && apt-get -y clean && \
     rm -rf /var/lib/apt/lists/*
 
