@@ -38,3 +38,4 @@ jobs:
         with:
           repository:  patrickdung/MeiliSearch-crossbuild 
           github_token: ${{ secrets.PUBLISH_TOKEN }}
+          branch: dev
