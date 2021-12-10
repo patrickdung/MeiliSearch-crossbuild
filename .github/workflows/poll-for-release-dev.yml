@@ -1,7 +1,7 @@
 name: Poll (dev/rc-branch) from official repo to get the latest release version
 on:
   schedule:
-    - cron: '8 * * * *'
+    - cron: '*/5 * * * *'
 jobs:
   get-version:
     runs-on: ubuntu-latest
