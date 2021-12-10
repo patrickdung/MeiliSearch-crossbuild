@@ -137,6 +137,7 @@ jobs:
           ## tag: ${{ github.ref }}
           tag: ${{ env.REMOTE_BRANCH_NAME }}
           prerelease: true
+          overwrite: true
           
       - name: Upload stripped binary to release (aarch64/x86_64 GNU only)
         if: matrix.target == 'aarch64-unknown-linux-gnu' || matrix.target == 'x86_64-unknown-linux-gnu'
@@ -149,6 +150,7 @@ jobs:
           ## tag: ${{ github.ref }}
           tag: ${{ env.REMOTE_BRANCH_NAME }}
           prerelease: true
+          overwrite: true
 
       - name: Upload checksum files to release
         uses: svenstaro/upload-release-action@v2
@@ -159,6 +161,7 @@ jobs:
           ## tag: ${{ github.ref }}
           tag: ${{ env.REMOTE_BRANCH_NAME }}
           prerelease: true
+          overwrite: true
 
   build-docker-image:
     # needs: publish-with-crossbuild
