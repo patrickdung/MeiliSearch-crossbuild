@@ -23,7 +23,7 @@ ARG SOURCE_BINARY_BASEURL=""
 RUN set -eux && \
     apt-get -y update && \
     apt-get -y install --no-install-suggests \
-      bash tini curl file procps && \
+      bash tini curl file procps coreutils && \
     groupadd \
       --gid 1000 \
       meilisearch && \
@@ -39,9 +39,12 @@ RUN set -eux && \
     chown meilisearch:meilisearch /meilisearch /data.ms /home/meilisearch/bin && \
     chmod 755 /home/meilisearch/bin && \
     curl -L -v -o /home/meilisearch/bin/meilisearch ${SOURCE_BINARY_BASEURL}/${MEILISEARCH_VERSION}/meilisearch-linux-$(/bin/uname -m)-stripped \
-    && chown meilisearch:meilisearch /home/meilisearch/bin/meilisearch \
+    && curl -L -v -o /home/meilisearch/bin/meilisearch.sha256sum ${SOURCE_BINARY_BASEURL}/${MEILISEARCH_VERSION}/meilisearch-linux-$(/bin/uname -m)-stripped.sha256sum \
+    && cd /home/meilisearch/bin/ && sha256sum --check --strict meilisearch.sha256sum \ 
+    && chown -R meilisearch:meilisearch /home/meilisearch/bin/meilisearch \
     && chmod 755 /home/meilisearch/bin/meilisearch \
     && ls -l /home/meilisearch/bin/meilisearch \
+    && apt-get -y remove coreutils \
     && apt-get -y upgrade && apt-get -y autoremove && apt-get -y clean && \
     rm -rf /var/lib/apt/lists/*
 
