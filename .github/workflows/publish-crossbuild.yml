@@ -1,4 +1,4 @@
-name: Release using cross build
+name: Pre-release using cross build
 
 on:
   push:
@@ -43,10 +43,10 @@ jobs:
     
     steps:
 
-      - name: Fetch branch name of latest version
+      - name: Fetch branch name of latest pre-release version
         run: |
           curl -sL https://api.github.com/repos/meilisearch/MeiliSearch/releases/latest | \
-          jq -r ".tag_name" > /tmp/meilisearch-latest-branch-name
+          jq -r 'map(select(.prerelease)) | first | .tag_name" > /tmp/meilisearch-latest-branch-name
           echo "REMOTE_BRANCH_NAME=$(cat /tmp/meilisearch-latest-branch-name)" >> $GITHUB_ENV
           
       - name: Checkout repository
@@ -55,16 +55,6 @@ jobs:
           repository: meilisearch/MeiliSearch
           ref: ${{ env.REMOTE_BRANCH_NAME }}
           
-      - name: Add Cross.toml that is not in offical repo
-        run: |
-          echo '[build.env]' >> Cross.toml
-          echo 'passthrough = [' >> Cross.toml
-          echo '"RUST_BACKTRACE",' >> Cross.toml
-          echo '"CARGO_TERM_COLOR",' >> Cross.toml
-          echo '"RUSTFLAGS",' >> Cross.toml
-          echo '"JEMALLOC_SYS_WITH_LG_PAGE"' >> Cross.toml
-          echo ']' >> Cross.toml
-
       - name: Installing Rust toolchain
         uses: actions-rs/toolchain@v1
         with:
@@ -156,23 +146,36 @@ jobs:
     name: Build Docker Images
     runs-on: ubuntu-latest
     continue-on-error: true
+      permissions:
+      actions: none
+      checks: none
+      contents: read
+      deployments: none
+      issues: none
+      packages: write
+      pull-requests: none
+      repository-projects: none
+      security-events: none
+      statuses: none
+      #id-token: write # needed for signing the images with GitHub OIDC **not production ready**
+    
     services:
       registry:
         image: registry:2
         ports:
           - 5000:5000
-    steps:    
+    steps:
       - name: Fetch branch name of latest version
         run: |
           curl -sL https://api.github.com/repos/meilisearch/MeiliSearch/releases/latest | \
-          jq -r ".tag_name" > /tmp/meilisearch-latest-branch-name
+          jq -r 'map(select(.prerelease)) | first | .tag_name" > /tmp/meilisearch-latest-branch-name
           echo "REMOTE_BRANCH_NAME=$(cat /tmp/meilisearch-latest-branch-name)" >> $GITHUB_ENV
-          
+
       - name: Checkout repository
         uses: actions/checkout@v2
         with:
           repository: patrickdung/MeiliSearch-crossbuild
-          ref: v0.23.1-testdocker
+          ref: dev
           
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
@@ -188,7 +191,17 @@ jobs:
           registry: registry.gitlab.com
           username: ${{ secrets.GITLAB_USERNAME }}
           password: ${{ secrets.GITLAB_TOKEN }}
-      
+   
+      - name: Install Cosign GH action
+        uses: sigstore/cosign-installer@main
+        #with:
+        #  cosign-release: 'v1.4.0'
+
+      - name: Verify Distroless image
+        run: |
+          cosign verify --key cosign.pub gcr.io/distroless/base-debian11:latest-amd64
+          cosign verify --key cosign.pub gcr.io/distroless/base-debian11:latest-arm64
+
       - name: Build and push
         uses: docker/build-push-action@v2
         with:
