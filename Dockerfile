@@ -2,8 +2,8 @@
 #
 # Copyright (c) 2021 Patrick Dung
 
-#FROM docker.io/debian:bullseye-slim
-FROM gcr.io/distroless/base-debian11
+FROM docker.io/debian:bullseye-slim
+# FROM gcr.io/distroless/base-debian11
 
 #ARG MEILISEARCH_VERSION="v0.25.0rc0"
 ARG MEILISEARCH_VERSION=""
