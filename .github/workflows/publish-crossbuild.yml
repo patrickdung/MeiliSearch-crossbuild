@@ -146,7 +146,7 @@ jobs:
     name: Build Docker Images
     runs-on: ubuntu-latest
     continue-on-error: true
-      permissions:
+    permissions:
       actions: none
       checks: none
       contents: read
