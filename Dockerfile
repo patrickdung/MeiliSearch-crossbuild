@@ -2,9 +2,10 @@
 #
 # Copyright (c) 2021 Patrick Dung
 
-FROM docker.io/debian:bullseye-slim
+#FROM docker.io/debian:bullseye-slim
+FROM gcr.io/distroless/base-debian11
 
-#ARG MEILISEARCH_VERSION="v0.23.0rc0"
+#ARG MEILISEARCH_VERSION="v0.25.0rc0"
 ARG MEILISEARCH_VERSION=""
 #ARG ARCH="amd64"
 ARG ARCH=""
@@ -15,10 +16,14 @@ ARG TARGETARCH
 #ARG SOURCE_BINARY_BASEURL="https://github.com/meilisearch/MeiliSearch/releases/download"
 ARG SOURCE_BINARY_BASEURL=""
 
+## Offical
+##https://github.com/meilisearch/MeiliSearch/releases/download/v0.23.0rc0/meilisearch-linux-amd64
+##https://github.com/meilisearch/MeiliSearch/releases/download/v0.23.0rc0/meilisearch-linux-armv8
+
 RUN set -eux && \
     apt-get -y update && \
     apt-get -y install --no-install-suggests \
-    bash tini curl file procps && \
+      bash tini curl file procps && \
     groupadd \
       --gid 1000 \
       meilisearch && \
@@ -40,14 +45,6 @@ RUN set -eux && \
     && apt-get -y upgrade && apt-get -y autoremove && apt-get -y clean && \
     rm -rf /var/lib/apt/lists/*
 
-## Offical
-##https://github.com/meilisearch/MeiliSearch/releases/download/v0.23.0rc0/meilisearch-linux-amd64
-##https://github.com/meilisearch/MeiliSearch/releases/download/v0.23.0rc0/meilisearch-linux-armv8
-
-    # source url uses armv8 instead of arm64
-    # My version uses aarch64 instead of armv8
-    # curl -L -v -o /home/meilisearch/bin/meilisearch ${SOURCE_BINARY_BASEURL}/${MEILISEARCH_VERSION}/meilisearch-linux-${ARCH} && \
-
 ##RUN set -eux && if [ "${ARCH}" = "x86_64" ] ; then curl -L -v -o /home/meilisearch/bin/meilisearch ${SOURCE_BINARY_BASEURL}/${MEILISEARCH_VERSION}/meilisearch-linux-aarch64; ls -l /home/meilisearch/bin/meilisearch; /usr/bin/aarch64-linux-gnu-strip --strip-debug --target=elf64-littleaarch64 /home/meilisearch/bin/meilisearch; fi
 ##RUN set -eux && if [ "${ARCH}" = "aarch" ] ; then curl -L -v -o /home/meilisearch/bin/meilisearch ${SOURCE_BINARY_BASEURL}/${MEILISEARCH_VERSION}/meilisearch-linux-amd64; ls -l /home/meilisearch/bin/meilisearch; /usr/bin/strip --strip-debug /home/meilisearch/bin/meilisearch; fi
 
@@ -57,6 +54,9 @@ RUN set -eux && \
 ##RUN set -eux && ARCH=$(cat /tmp/arch) echo TARGETARCH-${TARGETARCH} ARCH-${ARCH} && ARCH=$(cat /tmp/arch) curl -L -v -o /home/meilisearch/bin/meilisearch ${SOURCE_BINARY_BASEURL}/${MEILISEARCH_VERSION}/meilisearch-linux-${ARCH}
 
 USER meilisearch
+
+# Matches the official helm chart in
+# https://github.com/meilisearch/meilisearch-kubernetes/blob/main/charts/meilisearch/values.yaml
 VOLUME /data.ms
 WORKDIR /data.ms
 
