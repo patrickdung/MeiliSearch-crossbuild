@@ -19,6 +19,7 @@ jobs:
           echo ::set-output name=modified::$( if [ "${{ env.REMOTE_BRANCH_NAME }}" != "${{ env.LOCAL_BRANCH_NAME }}" ]; then echo "true"; else echo "false"; fi )
       - uses: actions/checkout@v2
         with:
+          ref: dev
           # https://github.community/t/push-from-action-even-with-pat-does-not-trigger-action/17622/5
           persist-credentials: false
       - name: Commit latest release version
