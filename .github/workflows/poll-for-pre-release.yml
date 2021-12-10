@@ -9,7 +9,7 @@ jobs:
       - name: Fetch branch name of latest version
         run: |
           curl -sL https://api.github.com/repos/meilisearch/MeiliSearch/releases | \
-          jq -r 'map(select(.prerelease)) | first | .tag_name" > /tmp/meilisearch-latest-branch-name
+          jq -r "map(select(.prerelease)) | first | .tag_name" > /tmp/meilisearch-latest-branch-name
           echo "REMOTE_BRANCH_NAME=$(cat /tmp/meilisearch-latest-branch-name)" >> $GITHUB_ENV
           curl -sL https://github.com/patrickdung/MeiliSearch-crossbuild/raw/dev/release-versions/meilisearch-latest.txt -o /tmp/meilisearch-local-branch-name
           echo "LOCAL_BRANCH_NAME=$(cat /tmp/meilisearch-local-branch-name)" >> $GITHUB_ENV
