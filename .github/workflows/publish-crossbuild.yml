@@ -46,7 +46,7 @@ jobs:
       - name: Fetch branch name of latest pre-release version
         run: |
           curl -sL https://api.github.com/repos/meilisearch/MeiliSearch/releases/latest | \
-          jq -r 'map(select(.prerelease)) | first | .tag_name" > /tmp/meilisearch-latest-branch-name
+          jq -r "map(select(.prerelease)) | first | .tag_name" > /tmp/meilisearch-latest-branch-name
           echo "REMOTE_BRANCH_NAME=$(cat /tmp/meilisearch-latest-branch-name)" >> $GITHUB_ENV
           
       - name: Checkout repository
@@ -168,7 +168,7 @@ jobs:
       - name: Fetch branch name of latest version
         run: |
           curl -sL https://api.github.com/repos/meilisearch/MeiliSearch/releases/latest | \
-          jq -r 'map(select(.prerelease)) | first | .tag_name" > /tmp/meilisearch-latest-branch-name
+          jq -r "map(select(.prerelease)) | first | .tag_name" > /tmp/meilisearch-latest-branch-name
           echo "REMOTE_BRANCH_NAME=$(cat /tmp/meilisearch-latest-branch-name)" >> $GITHUB_ENV
 
       - name: Checkout repository
