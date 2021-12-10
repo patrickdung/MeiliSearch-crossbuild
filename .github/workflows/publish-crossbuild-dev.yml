@@ -116,12 +116,19 @@ jobs:
         if: matrix.target == 'x86_64-unknown-linux-gnu'
         run: |
           strip --strip-debug target/${{ matrix.target }}/release/meilisearch -o target/${{ matrix.target }}/release/meilisearch-stripped
-
+      
+      - name: Create checksum file for the binaries
+        run: |
+          sha256sum target/${{ matrix.target }}/release/meilisearch > target/${{ matrix.target }}/release/${{matrix.asset_name}}.sha256sum
+          if [ -e target/${{ matrix.target }}/release/meilisearch-stripped ]; then
+             sha256sum target/${{ matrix.target }}/release/meilisearch-stripped > target/${{ matrix.target }}/release/${{matrix.asset_name}}-stripped.sha256sum
+          fi
+          
       - name: List target output files
         run: ls -lR ./target
 
       - name: Upload the binary to release
-        uses: svenstaro/upload-release-action@v1-release
+        uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.PUBLISH_TOKEN }}
           # repo_token: ${{ secrets.GITHUB_TOKEN }}
@@ -129,10 +136,11 @@ jobs:
           asset_name: ${{ matrix.asset_name }}
           ## tag: ${{ github.ref }}
           tag: ${{ env.REMOTE_BRANCH_NAME }}
+          prerelease: true
           
       - name: Upload stripped binary to release (aarch64/x86_64 GNU only)
         if: matrix.target == 'aarch64-unknown-linux-gnu' || matrix.target == 'x86_64-unknown-linux-gnu'
-        uses: svenstaro/upload-release-action@v1-release
+        uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.PUBLISH_TOKEN }}
           # repo_token: ${{ secrets.GITHUB_TOKEN }}
@@ -140,7 +148,18 @@ jobs:
           asset_name: ${{ matrix.asset_name }}-stripped
           ## tag: ${{ github.ref }}
           tag: ${{ env.REMOTE_BRANCH_NAME }}
-          
+          prerelease: true
+
+      - name: Upload checksum files to release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.PUBLISH_TOKEN }}
+          file: target/${{ matrix.target }}/release/*.sha256sum
+          file_glob: true
+          ## tag: ${{ github.ref }}
+          tag: ${{ env.REMOTE_BRANCH_NAME }}
+          prerelease: true
+
   build-docker-image:
     # needs: publish-with-crossbuild
     name: Build Docker Images
@@ -230,4 +249,4 @@ jobs:
       #- name: Setup Polaris
       #  uses: fairwindsops/polaris@master
       #- name: Check k8s resources by Polaris
-      #  run: polaris 
+      #  run: polaris
