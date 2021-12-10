@@ -38,12 +38,14 @@ RUN set -eux && \
     mkdir -p /meilisearch /data.ms /home/meilisearch/bin && \
     chown meilisearch:meilisearch /meilisearch /data.ms /home/meilisearch/bin && \
     chmod 755 /home/meilisearch/bin && \
-    curl -L -v -o /home/meilisearch/bin/meilisearch ${SOURCE_BINARY_BASEURL}/${MEILISEARCH_VERSION}/meilisearch-linux-$(/bin/uname -m)-stripped \
-    && curl -L -v -o /home/meilisearch/bin/meilisearch.sha256sum ${SOURCE_BINARY_BASEURL}/${MEILISEARCH_VERSION}/meilisearch-linux-$(/bin/uname -m)-stripped.sha256sum \
-    && cd /home/meilisearch/bin/ && sha256sum --check --strict meilisearch.sha256sum \ 
-    && chown -R meilisearch:meilisearch /home/meilisearch/bin/meilisearch \
+    cd /home/meilisearch/bin/ && \
+    curl -L -v -O ${SOURCE_BINARY_BASEURL}/${MEILISEARCH_VERSION}/meilisearch-linux-$(/bin/uname -m)-stripped \
+    && curl -L -v -o meilisearch.sha256sum ${SOURCE_BINARY_BASEURL}/${MEILISEARCH_VERSION}/meilisearch-linux-$(/bin/uname -m)-stripped.sha256sum \
+    && sha256sum --check --strict meilisearch.sha256sum \
+    && ln -s meilisearch-linux-$(/bin/uname -m)-stripped meilisearch \
+    && chown -R meilisearch:meilisearch /home/meilisearch/bin \
     && chmod 755 /home/meilisearch/bin/meilisearch \
-    && ls -l /home/meilisearch/bin/meilisearch \
+    && ls -lR /home/meilisearch/bin \
     && apt-get -y remove coreutils \
     && apt-get -y upgrade && apt-get -y autoremove && apt-get -y clean && \
     rm -rf /var/lib/apt/lists/*
