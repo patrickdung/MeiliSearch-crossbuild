@@ -120,7 +120,7 @@ jobs:
       - name: Create checksum file for the binaries
         run: |
           cd target/${{ matrix.target }}/release
-          sha256sum meilisearch | awk '{print $1, "${{matrix.asset_name}}"' > ${{matrix.asset_name}}.sha256sum
+          sha256sum meilisearch | awk '{print $1, "${{matrix.asset_name}}"}' > ${{matrix.asset_name}}.sha256sum
           if [ -e meilisearch-stripped ]; then
              sha256sum meilisearch-stripped awk '{print $1, "${{matrix.asset_name}}-stripped"' > ${{matrix.asset_name}}-stripped.sha256sum
           fi  
