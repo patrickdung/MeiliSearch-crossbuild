@@ -239,6 +239,15 @@ jobs:
             registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}-dev
             localhost:5000/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}-dev
             
+      - name: Use Cosign to sign the image
+        env:
+          COSIGN_PASSWORD: ${{ secrets.COSIGN_PRIVATE_KEY_PASSWORD }}
+        run: |
+          echo "${{ secrets.COSIGN_PRIVATE_KEY }}" > cosign.key
+          CONTAINER_IMAGE="registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}-dev"
+          # Sign the image, the signature is also pushed to the registry
+          cosign sign -key ./cosign.key "$CONTAINER_IMAGE"
+            
       - name: Scan image by Anchore
         uses: anchore/scan-action@v3
         id: scan-by-anchore
