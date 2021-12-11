@@ -381,3 +381,11 @@ jobs:
         run: |
           cat trivy-results.sarif
           cat ${{ steps.scan-by-anchore.outputs.sarif }}
+
+      - name: Upload SARIF reports to artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          path: |
+            trivy-results.sarif
+            ${{ steps.scan-by-anchore.outputs.sarif }}
+          name: "SARIF reports when containers are built"
