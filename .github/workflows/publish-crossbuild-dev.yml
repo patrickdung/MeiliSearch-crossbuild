@@ -255,7 +255,7 @@ jobs:
           artifact-name: container-sbom.spdx.json
           
       - name: Publish SBOM
-        uses: anchore/sbom-action/publish-sbom
+        uses: anchore/sbom-action/publish-sbom@v0
         with:
           sbom-artifact-match: 	.*\\.spdx\\.json$
 
