@@ -8,6 +8,8 @@ on:
     #  - 'release-versions/*'
 env:
   CARGO_TERM_COLOR: always
+  SYFT_VERSION: 0.32.0
+  GRYPE_VERSION: 0.27.0
 
 jobs:
   publish-with-crossbuild:
@@ -218,7 +220,7 @@ jobs:
       - name: Install Cosign GH action
         uses: sigstore/cosign-installer@main
         #with:
-        #  cosign-release: 'v1.4.0'
+        #  cosign-release: 'v1.4.1'
 
       # Distroless won't have package managers
       #- name: Verify Distroless image
@@ -248,19 +250,44 @@ jobs:
           # Sign the image, the signature is also pushed to the registry
           cosign sign --key ./cosign.key "$CONTAINER_IMAGE"
   
+      # grype can't read it (sbom action uses syft v0.26)
+      #- name: Use SBOM action to generate the SBOM
+      #  uses: anchore/sbom-action@v0
+      #  with:
+      #    image: registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}-dev
+      #    artifact-name: container-sbom.spdx.json
+      
+      - name: Install Syft
+        run: |
+          cd /tmp
+          curl -L -O -v https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/stft_${SYFT_VERSION}_linux_amd64.deb
+          curl -L -O -v https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/stft_${SYFT_VERSION}_checksums.txt
+          sha256sum -c syft_${SYFT_VERSION}_checksums.txt --ignore-missing
+          sudo dpkg -i syft_${SYFT_VERSION}_linux_amd64.deb
+
       - name: Use Syft to generate the SBOM
-        uses: anchore/sbom-action@v0
-        with:
-          image: registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}-dev
-          artifact-name: container-sbom.spdx.json
+        run: |
+          echo "ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT=container-sbom.json" >> $GITHUB_ENV
+          syft -v "registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}-dev" -o json > ./${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}}
           
-      - name: Publish SBOM to release package
-        uses: anchore/sbom-action/publish-sbom@v0
+      # Not working and not published
+      #- name: Publish SBOM to release package
+      #  uses: anchore/sbom-action/publish-sbom@v0
+      #  with:
+      #    ##sbom-artifact-match: 	.*\\.spdx\\.json$
+      #    ## ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT: container-sbom.spdx.json
+      #    sbom-artifact-match: ${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}}
+      #    github-token: ${{secrets.PUBLISH_TOKEN}}
+      
+      - name: Upload SBOM files to release
+        uses: svenstaro/upload-release-action@v2
         with:
-          #sbom-artifact-match: 	.*\\.spdx\\.json$
-          # ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT: container-sbom.spdx.json
-          sbom-artifact-match: ${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}}
-          github-token: ${{secrets.PUBLISH_TOKEN}}
+          repo_token: ${{ secrets.PUBLISH_TOKEN }}
+          file: ./${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}}
+          ## tag: ${{ github.ref }}
+          tag: ${{ env.REMOTE_BRANCH_NAME }}
+          prerelease: true
+          overwrite: true
 
       - name: Download the container SBOM artifact
         uses: actions/download-artifact@v2
@@ -292,10 +319,10 @@ jobs:
       - name: Scan container by Grype
         run: |
           # May set a severity threshold for failing the build
-          #unzip -p ./container-sbom.spdx.json > ./container-sbom.spdx.json
-          unzip -p ./${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}} > ./sbom.spdx.json
-          grype sbom:./sbom.spdx.json -o json > ./vulnerabilities-report-grype.json
-          grype sbom:./sbom.spdx.json -o table > ./vulnerabilities-report-grype-table.txt
+          ##unzip -p ./container-sbom.spdx.json > ./container-sbom.spdx.json
+          ##unzip -p ./${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}} > ./sbom.spdx.json
+          grype sbom:./${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}} -o json > ./vulnerabilities-report-grype.json
+          grype sbom:./${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}} -o table > ./vulnerabilities-report-grype-table.txt
 
       - name: Upload Grype report from artifiacts
         uses: actions/upload-artifact@v2
