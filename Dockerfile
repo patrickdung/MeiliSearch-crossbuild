@@ -4,7 +4,7 @@
 
 FROM docker.io/debian:bullseye-slim
 
-#ARG MEILISEARCH_VERSION="v0.23.0rc0"
+#ARG MEILISEARCH_VERSION="v0.24.0"
 ARG MEILISEARCH_VERSION=""
 #ARG ARCH="amd64"
 ARG ARCH=""
@@ -16,13 +16,13 @@ ARG TARGETARCH
 ARG SOURCE_BINARY_BASEURL=""
 
 ## Offical
-##https://github.com/meilisearch/MeiliSearch/releases/download/v0.23.0rc0/meilisearch-linux-amd64
-##https://github.com/meilisearch/MeiliSearch/releases/download/v0.23.0rc0/meilisearch-linux-armv8
+##https://github.com/meilisearch/MeiliSearch/releases/download/v0.24.0/meilisearch-linux-amd64
+##https://github.com/meilisearch/MeiliSearch/releases/download/v0.24.0/meilisearch-linux-armv8
 
 RUN set -eux && \
     apt-get -y update && \
     apt-get -y install --no-install-suggests \
-      bash tini curl file procps && \
+      bash tini curl file procps coreutils && \
     groupadd \
       --gid 1000 \
       meilisearch && \
@@ -37,10 +37,14 @@ RUN set -eux && \
     mkdir -p /meilisearch /data.ms /home/meilisearch/bin && \
     chown meilisearch:meilisearch /meilisearch /data.ms /home/meilisearch/bin && \
     chmod 755 /home/meilisearch/bin && \
-    curl -L -v -o /home/meilisearch/bin/meilisearch ${SOURCE_BINARY_BASEURL}/${MEILISEARCH_VERSION}/meilisearch-linux-$(/bin/uname -m)-stripped \
-    && chown meilisearch:meilisearch /home/meilisearch/bin/meilisearch \
+    cd /home/meilisearch/bin/ && \
+    curl -L -v -O ${SOURCE_BINARY_BASEURL}/${MEILISEARCH_VERSION}/meilisearch-linux-$(/bin/uname -m)-stripped \
+    && curl -L -v -o meilisearch.sha256sum ${SOURCE_BINARY_BASEURL}/${MEILISEARCH_VERSION}/meilisearch-linux-$(/bin/uname -m)-stripped.sha256sum \
+    && sha256sum --check --strict meilisearch.sha256sum \
+    && ln -s meilisearch-linux-$(/bin/uname -m)-stripped meilisearch \
+    && chown -R meilisearch:meilisearch /home/meilisearch/bin \
     && chmod 755 /home/meilisearch/bin/meilisearch \
-    && ls -l /home/meilisearch/bin/meilisearch \
+    && ls -lR /home/meilisearch/bin \
     && apt-get -y upgrade && apt-get -y autoremove && apt-get -y clean && \
     rm -rf /var/lib/apt/lists/*
 
