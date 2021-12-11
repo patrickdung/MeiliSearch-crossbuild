@@ -252,8 +252,28 @@ jobs:
         uses: anchore/sbom-action@v0
         with:
           image: registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}-dev
-          artifact-name: sbom.syft.spdx    
-            
+          artifact-name: container-sbom.spdx.json
+          
+      - name: Publish SBOM
+        uses: anchore/sbom-action/publish-sbom
+        with:
+          sbom-artifact-match: 	.*\\.spdx\\.json$
+
+      - name: Download the container SBOM artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: container-sbom.spdx.json
+
+      - name: Create SBOM attestation
+        env:
+          COSIGN_PASSWORD: ${{ secrets.COSIGN_PRIVATE_KEY_PASSWORD }}
+          SBOM_FILE: ./container-sbom.spdx.json
+        run: |
+          echo "${{ secrets.COSIGN_PRIVATE_KEY }}" > cosign.key
+          CONTAINER_IMAGE="registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}-dev"
+          # Create SBOM attestation and push it to the container registry
+          cosign attest -predicate "$SBOM_FILE" -key ./cosign.key "$CONTAINER_IMAGE"
+
       - name: Scan image by Anchore
         uses: anchore/scan-action@v3
         id: scan-by-anchore
