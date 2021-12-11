@@ -292,11 +292,12 @@ jobs:
           prerelease: true
           overwrite: true
 
-      - name: Download the container SBOM artifact
-        uses: actions/download-artifact@v2
-        with:
-          #name: container-sbom.spdx.json
-          name: ${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}}
+      # Cannot download if it's not genreated as artifact
+      #- name: Download the container SBOM artifact
+      #  uses: actions/download-artifact@v2
+      #  with:
+      #    #name: container-sbom.spdx.json
+      #    name: ${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}}
 
       - name: Create SBOM attestation
         env:
