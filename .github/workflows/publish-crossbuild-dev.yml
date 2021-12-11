@@ -51,7 +51,7 @@ jobs:
           jq -r "map(select(.prerelease)) | first | .tag_name" > /tmp/meilisearch-latest-branch-name
           echo "REMOTE_BRANCH_NAME=$(cat /tmp/meilisearch-latest-branch-name)" >> $GITHUB_ENV
 
-      - name: "Fetch branch name of latest release versions - Other software""
+      - name: "Fetch branch name of latest release versions - Other software"
         run: |
           curl -sL https://api.github.com/repos/anchore/syft/releases | \
           jq -r ".[].tag_name" | grep -v rc | sort -nr | head -n 1 | sed -E 's|^v||' > /tmp/syft-latest-branch-name
