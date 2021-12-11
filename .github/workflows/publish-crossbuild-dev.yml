@@ -347,6 +347,7 @@ jobs:
           
       - name: Scan container with Trivy
         uses: aquasecurity/trivy-action@master
+        id: scan-by-trivy
         with:
           image-ref: 'registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}-dev'
           format: 'template'
@@ -354,7 +355,7 @@ jobs:
           output: 'trivy-results.sarif'
           severity: 'CRITICAL,HIGH'
 
-      - name: Upload Trivy scanning report to GitHub Security tab
+      - name: Upload Trivy SARIF report to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v1
         with:
           sarif_file: 'trivy-results.sarif'
@@ -366,9 +367,17 @@ jobs:
           fail-build: false
           image: "localhost:5000/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}-dev"
           acs-report-enable: true
-          
-      - name: Inspect Ancore scan SARIF report
-        run: cat ${{ steps.scan-by-anchore.outputs.sarif }}
+        
+      - name: Upload Anchore SARIF report to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v1
+        with:
+          sarif_file: ${{ steps.scan-by-anchore.outputs.sarif }}
+ 
+
+      - name: Inspect SARIF report(s)
+        run: |
+          cat trivy-results.sarif
+          cat ${{ steps.scan-by-anchore.outputs.sarif }}
 
       #- name: Setup Polaris
       #  uses: fairwindsops/polaris@master
