@@ -260,6 +260,7 @@ jobs:
           #sbom-artifact-match: 	.*\\.spdx\\.json$
           # ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT: container-sbom.spdx.json
           sbom-artifact-match: ${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}}
+          github-token: ${{secrets.PUBLISH_TOKEN}}
 
       - name: Download the container SBOM artifact
         uses: actions/download-artifact@v2
