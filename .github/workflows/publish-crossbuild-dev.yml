@@ -180,7 +180,8 @@ jobs:
       packages: write
       pull-requests: none
       repository-projects: none
-      security-events: none
+      # GH action/scanners for sarif reports
+      security-events: write
       statuses: none
       #id-token: write # needed for signing the images with GitHub OIDC **not production ready**
     
