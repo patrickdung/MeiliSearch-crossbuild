@@ -246,7 +246,7 @@ jobs:
           echo "${{ secrets.COSIGN_PRIVATE_KEY }}" > cosign.key
           CONTAINER_IMAGE="registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}-dev"
           # Sign the image, the signature is also pushed to the registry
-          cosign sign -key ./cosign.key "$CONTAINER_IMAGE"
+          cosign sign --key ./cosign.key "$CONTAINER_IMAGE"
   
       - name: Use Syft to generate the SBOM
         uses: anchore/sbom-action@v0
@@ -254,10 +254,12 @@ jobs:
           image: registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}-dev
           artifact-name: container-sbom.spdx.json
           
-      - name: Publish SBOM
+      - name: Publish SBOM to release package
         uses: anchore/sbom-action/publish-sbom@v0
         with:
-          sbom-artifact-match: 	.*\\.spdx\\.json$
+          #sbom-artifact-match: 	.*\\.spdx\\.json$
+          # ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT: container-sbom.spdx.json
+          sbom-artifact-match: ${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}}
 
       - name: Download the container SBOM artifact
         uses: actions/download-artifact@v2
@@ -272,9 +274,31 @@ jobs:
           echo "${{ secrets.COSIGN_PRIVATE_KEY }}" > cosign.key
           CONTAINER_IMAGE="registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}-dev"
           # Create SBOM attestation and push it to the container registry
-          cosign attest -predicate "$SBOM_FILE" -key ./cosign.key "$CONTAINER_IMAGE"
+          cosign attest --predicate "$SBOM_FILE" --key ./cosign.key "$CONTAINER_IMAGE"
 
-      - name: Scan image by Anchore
+      - name: Install Grype
+        env:
+          GRYPE_VERSION=0.27.0
+        run: |
+          cd /tmp
+          curl -L -O -v https://github.com/anchore/grype/releases/download/v${GRYPE_VERSION}/grype_${GRYPE_VERSION}_linux_amd64.deb
+          curl -L -O -v https://github.com/anchore/grype/releases/download/v${GRYPE_VERSION}/grype_${GRYPE_VERSION}_checksums.txt
+          sha256sum -c grype_${GRYPE_VERSION}_checksums.txt
+          dpkg -i grype_${GRYPE_VERSION}_linux_amd64.deb
+
+      - name: Scan container by Grype
+        run: |
+          # May set a severity threshold for failing the build
+          grype sbom:./container-sbom.spdx.json -o json > ./vulnerabilities-report-grype.json
+          grype sbom:./container-sbom.spdx.json -o table > ./vulnerabilities-report-grype-table.txt
+
+      - name: Upload Grype report from artifiacts
+        uses: actions/upload-artifact@v2
+        with:
+          path: ./vulnerabilities-report-grype*
+          name: "Vulnerabilities report by Grype"
+
+      - name: Scan container by Anchore
         uses: anchore/scan-action@v3
         id: scan-by-anchore
         with:
