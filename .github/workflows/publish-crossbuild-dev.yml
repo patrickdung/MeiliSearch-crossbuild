@@ -359,6 +359,7 @@ jobs:
         uses: github/codeql-action/upload-sarif@v1
         with:
           sarif_file: 'trivy-results.sarif'
+          category: trivy
 
       - name: Scan container by Anchore
         uses: anchore/scan-action@v3
@@ -372,7 +373,7 @@ jobs:
         uses: github/codeql-action/upload-sarif@v1
         with:
           sarif_file: ${{ steps.scan-by-anchore.outputs.sarif }}
- 
+          category: anchore
 
       - name: Inspect SARIF report(s)
         run: |
