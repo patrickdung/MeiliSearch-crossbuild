@@ -264,10 +264,13 @@ jobs:
           curl -L -O -v https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/syft_${SYFT_VERSION}_checksums.txt
           sha256sum -c syft_${SYFT_VERSION}_checksums.txt --ignore-missing
           sudo dpkg -i syft_${SYFT_VERSION}_linux_amd64.deb
+          
+      - name: Set the SBOM env variable for use by later steps
+        run: |
+          echo "ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT=container-sbom.json" >> $GITHUB_ENV
 
       - name: Use Syft to generate the SBOM
         run: |
-          echo "ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT=container-sbom.json" >> $GITHUB_ENV
           syft -v "registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}-dev" -o json > ./${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}}
           
       # Not working and not published
