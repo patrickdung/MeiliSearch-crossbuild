@@ -328,11 +328,35 @@ jobs:
           grype sbom:./${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}} -o json > ./vulnerabilities-report-grype.json
           grype sbom:./${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}} -o table > ./vulnerabilities-report-grype-table.txt
 
-      - name: Upload Grype report from artifiacts
+      - name: Upload Grype reports to artifiacts
         uses: actions/upload-artifact@v2
         with:
           path: ./vulnerabilities-report-grype*
-          name: "Vulnerabilities report by Grype"
+          name: "Vulnerabilities reports by Grype"
+
+      - name: Upload Grype reports to release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.PUBLISH_TOKEN }}
+          file: ./vulnerabilities-report-grype*
+          file_glob: true
+          tag: ${{ env.REMOTE_BRANCH_NAME }}
+          prerelease: true
+          overwrite: true
+          
+      - name: Scan container with Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}-dev'
+          format: 'template'
+          template: '@/contrib/sarif.tpl'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy scanning report to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v1
+        with:
+          sarif_file: 'trivy-results.sarif'
 
       - name: Scan container by Anchore
         uses: anchore/scan-action@v3
@@ -342,7 +366,7 @@ jobs:
           image: "localhost:5000/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}-dev"
           acs-report-enable: true
           
-      - name: Inspect action SARIF report
+      - name: Inspect Ancore scan SARIF report
         run: cat ${{ steps.scan-by-anchore.outputs.sarif }}
 
       #- name: Setup Polaris
