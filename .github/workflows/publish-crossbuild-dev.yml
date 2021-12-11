@@ -4,12 +4,12 @@ on:
   push:
     branches:
       - dev
-    #paths:
+    # paths:
     #  - 'release-versions/*'
 env:
   CARGO_TERM_COLOR: always
-  SYFT_VERSION: 0.32.0
-  GRYPE_VERSION: 0.27.0
+  # SYFT_VERSION: 0.32.0
+  # GRYPE_VERSION: 0.27.0
 
 jobs:
   publish-with-crossbuild:
@@ -42,21 +42,30 @@ jobs:
             target: x86_64-unknown-linux-musl
             use-cross: true
             asset_name: meilisearch-linux-x86_64-musl
-    
+
     steps:
 
-      - name: Fetch branch name of latest pre-release version
+      - name: Fetch branch name of latest pre-release version (Meili)
         run: |
           curl -sL https://api.github.com/repos/meilisearch/MeiliSearch/releases | \
           jq -r "map(select(.prerelease)) | first | .tag_name" > /tmp/meilisearch-latest-branch-name
-          echo "REMOTE_BRANCH_NAME=$(cat /tmp/meilisearch-latest-branch-name)" >> $GITHUB_ENV
-          
+          echo "REMOTE_BRANCH_NAME=$(cat /tmp/meilisearch-latest-branch-name)" >> $GITHUB_ENV Fetch branch name of latest pre-release version (Meili)
+
+      - name: Fetch branch name of latest release versions (Other softwares)
+        run: |
+          curl -sL https://api.github.com/repos/anchore/syft/releases | \
+          jq -r ".[].tag_name" | grep -v rc | sort -nr | head -n 1 | sed -E 's|^v||' > /tmp/syft-latest-branch-name
+          echo "SYFT_VERSION=$(cat /tmp/syft-latest-branch-name)" >> $GITHUB_ENV
+          curl -sL https://api.github.com/repos/anchore/grype/releases | \
+          jq -r ".[].tag_name" | grep -v rc | sort -nr | head -n 1 | sed -E 's|^v||' > /tmp/grype-latest-branch-name
+          echo "GRYPE_VERSION=$(cat /tmp/grype-latest-branch-name)" >> $GITHUB_ENV
+
       - name: Checkout repository
         uses: actions/checkout@v2
         with:
           repository: meilisearch/MeiliSearch
           ref: ${{ env.REMOTE_BRANCH_NAME }}
-          
+
       - name: Installing Rust toolchain
         uses: actions-rs/toolchain@v1
         with:
@@ -108,7 +117,7 @@ jobs:
           args: --release --target ${{ matrix.target }}
 
       # Strip debuginfo for target aarch64 GNU
-      # MUSL binary are static linked
+      # MUSL binaries are static linked
       - name: Strip debuginfo for target aarch64 GNU
         if: matrix.target == 'aarch64-unknown-linux-gnu'
         run: |
@@ -118,15 +127,15 @@ jobs:
         if: matrix.target == 'x86_64-unknown-linux-gnu'
         run: |
           strip --strip-debug target/${{ matrix.target }}/release/meilisearch -o target/${{ matrix.target }}/release/meilisearch-stripped
-      
+
       - name: Create checksum file for the binaries
         run: |
           cd target/${{ matrix.target }}/release
           sha256sum meilisearch | awk '{print $1, "${{matrix.asset_name}}"}' > ${{matrix.asset_name}}.sha256sum
           if [ -e meilisearch-stripped ]; then
              sha256sum meilisearch-stripped | awk '{print $1, "${{matrix.asset_name}}-stripped"}' > ${{matrix.asset_name}}-stripped.sha256sum
-          fi  
-          
+          fi
+
       - name: List target output files
         run: ls -lR ./target
 
@@ -137,11 +146,10 @@ jobs:
           # repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: target/${{ matrix.target }}/release/meilisearch
           asset_name: ${{ matrix.asset_name }}
-          ## tag: ${{ github.ref }}
           tag: ${{ env.REMOTE_BRANCH_NAME }}
           prerelease: true
           overwrite: true
-          
+
       - name: Upload stripped binary to release (aarch64/x86_64 GNU only)
         if: matrix.target == 'aarch64-unknown-linux-gnu' || matrix.target == 'x86_64-unknown-linux-gnu'
         uses: svenstaro/upload-release-action@v2
@@ -150,7 +158,6 @@ jobs:
           # repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: target/${{ matrix.target }}/release/meilisearch-stripped
           asset_name: ${{ matrix.asset_name }}-stripped
-          ## tag: ${{ github.ref }}
           tag: ${{ env.REMOTE_BRANCH_NAME }}
           prerelease: true
           overwrite: true
@@ -161,7 +168,6 @@ jobs:
           repo_token: ${{ secrets.PUBLISH_TOKEN }}
           file: target/${{ matrix.target }}/release/*.sha256sum
           file_glob: true
-          ## tag: ${{ github.ref }}
           tag: ${{ env.REMOTE_BRANCH_NAME }}
           prerelease: true
           overwrite: true
@@ -184,7 +190,7 @@ jobs:
       security-events: write
       statuses: none
       #id-token: write # needed for signing the images with GitHub OIDC **not production ready**
-    
+
     services:
       registry:
         image: registry:2
@@ -202,28 +208,28 @@ jobs:
         with:
           repository: patrickdung/MeiliSearch-crossbuild
           ref: dev
-          
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
-        
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
         with:
           driver-opts: network=host
-        
+
       - name: Login to Registry provider
-        uses: docker/login-action@v1 
+        uses: docker/login-action@v1
         with:
           registry: registry.gitlab.com
           username: ${{ secrets.GITLAB_USERNAME }}
           password: ${{ secrets.GITLAB_TOKEN }}
-   
+
       - name: Install Cosign GH action
         uses: sigstore/cosign-installer@main
         #with:
         #  cosign-release: 'v1.4.1'
 
-      # Distroless won't have package managers
+      # Distroless don't have package managers
       #- name: Verify Distroless image
       #  run: |
       #    cosign verify --key cosign.pub gcr.io/distroless/base-debian11:latest-amd64
@@ -241,7 +247,7 @@ jobs:
           tags: |
             registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}-dev
             localhost:5000/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}-dev
-            
+
       - name: Use Cosign to sign the image
         env:
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PRIVATE_KEY_PASSWORD }}
@@ -250,22 +256,22 @@ jobs:
           CONTAINER_IMAGE="registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}-dev"
           # Sign the image, the signature is also pushed to the registry
           cosign sign --key ./cosign.key "$CONTAINER_IMAGE"
-  
-      # grype can't read it (sbom action uses syft v0.26)
+
+      # Grype can't read it (sbom action uses syft v0.26 and default is spdx-json)
       #- name: Use SBOM action to generate the SBOM
       #  uses: anchore/sbom-action@v0
       #  with:
       #    image: registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}-dev
       #    artifact-name: container-sbom.spdx.json
-      
+
       - name: Install Syft
         run: |
           cd /tmp
-          curl -L -O -v https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/syft_${SYFT_VERSION}_linux_amd64.deb
-          curl -L -O -v https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/syft_${SYFT_VERSION}_checksums.txt
-          sha256sum -c syft_${SYFT_VERSION}_checksums.txt --ignore-missing
-          sudo dpkg -i syft_${SYFT_VERSION}_linux_amd64.deb
-          
+          curl -L -O -v https://github.com/anchore/syft/releases/download/v${{env.SYFT_VERSION}}/syft_${{env.SYFT_VERSION}}_linux_amd64.deb
+          curl -L -O -v https://github.com/anchore/syft/releases/download/v${{env.SYFT_VERSION}}/syft_${{env.SYFT_VERSION}}_checksums.txt
+          sha256sum -c syft_${{env.SYFT_VERSION}}_checksums.txt --ignore-missing
+          sudo dpkg -i syft_${{env.SYFT_VERSION}}_linux_amd64.deb
+
       - name: Set the SBOM env variable for use by later steps
         run: |
           echo "ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT=container-sbom.json" >> $GITHUB_ENV
@@ -273,8 +279,8 @@ jobs:
       - name: Use Syft to generate the SBOM
         run: |
           syft -v "registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}-dev" -o json > ./${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}}
-          
-      # Not working and not published
+
+      # Not working and artifact is not published
       #- name: Publish SBOM to release package
       #  uses: anchore/sbom-action/publish-sbom@v0
       #  with:
@@ -282,7 +288,7 @@ jobs:
       #    ## ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT: container-sbom.spdx.json
       #    sbom-artifact-match: ${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}}
       #    github-token: ${{secrets.PUBLISH_TOKEN}}
-      
+
       - name: Upload SBOM files to release
         uses: svenstaro/upload-release-action@v2
         with:
@@ -293,7 +299,7 @@ jobs:
           prerelease: true
           overwrite: true
 
-      # Cannot download if it's not genreated as artifact
+      # Cannot download if it's not generated as artifact
       #- name: Download the container SBOM artifact
       #  uses: actions/download-artifact@v2
       #  with:
@@ -312,24 +318,20 @@ jobs:
           cosign attest --predicate "$SBOM_FILE" --key ./cosign.key "$CONTAINER_IMAGE"
 
       - name: Install Grype
-        env:
-          GRYPE_VERSION: 0.27.0
         run: |
           cd /tmp
-          curl -L -O -v https://github.com/anchore/grype/releases/download/v${GRYPE_VERSION}/grype_${GRYPE_VERSION}_linux_amd64.deb
-          curl -L -O -v https://github.com/anchore/grype/releases/download/v${GRYPE_VERSION}/grype_${GRYPE_VERSION}_checksums.txt
-          sha256sum -c grype_${GRYPE_VERSION}_checksums.txt --ignore-missing
-          sudo dpkg -i grype_${GRYPE_VERSION}_linux_amd64.deb
+          curl -L -O -v https://github.com/anchore/grype/releases/download/v${{env.GRYPE_VERSION}}/grype_${{env.GRYPE_VERSION}}_linux_amd64.deb
+          curl -L -O -v https://github.com/anchore/grype/releases/download/v${{env.GRYPE_VERSION}}/grype_${{env.GRYPE_VERSION}}_checksums.txt
+          sha256sum -c grype_${{env.GRYPE_VERSION}}_checksums.txt --ignore-missing
+          sudo dpkg -i grype_${{env.GRYPE_VERSION}}_linux_amd64.deb
 
       - name: Scan container by Grype
         run: |
           # May set a severity threshold for failing the build
-          ##unzip -p ./container-sbom.spdx.json > ./container-sbom.spdx.json
-          ##unzip -p ./${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}} > ./sbom.spdx.json
           grype sbom:./${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}} -o json > ./vulnerabilities-report-grype.json
           grype sbom:./${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}} -o table > ./vulnerabilities-report-grype-table.txt
 
-      - name: Upload Grype reports to artifiacts
+      - name: Upload Grype reports to artifacts
         uses: actions/upload-artifact@v2
         with:
           path: ./vulnerabilities-report-grype*
@@ -344,7 +346,7 @@ jobs:
           tag: ${{ env.REMOTE_BRANCH_NAME }}
           prerelease: true
           overwrite: true
-          
+
       - name: Scan container with Trivy
         uses: aquasecurity/trivy-action@master
         id: scan-by-trivy
@@ -368,7 +370,7 @@ jobs:
           fail-build: false
           image: "localhost:5000/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}-dev"
           acs-report-enable: true
-        
+
       - name: Upload Anchore SARIF report to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v1
         with:
@@ -379,8 +381,3 @@ jobs:
         run: |
           cat trivy-results.sarif
           cat ${{ steps.scan-by-anchore.outputs.sarif }}
-
-      #- name: Setup Polaris
-      #  uses: fairwindsops/polaris@master
-      #- name: Check k8s resources by Polaris
-      #  run: polaris
