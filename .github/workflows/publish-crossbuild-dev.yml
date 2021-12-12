@@ -302,6 +302,13 @@ jobs:
         run: |
           echo "REMOTE_BRANCH_NAME=${{ needs.publish-with-crossbuild.outputs.remote_branch_name }}" >> $GITHUB_ENV
 
+      - name: Login to Registry provider
+        uses: docker/login-action@v1
+        with:
+          registry: registry.gitlab.com
+          username: ${{ secrets.GITLAB_USERNAME }}
+          password: ${{ secrets.GITLAB_TOKEN }}
+
       - name: Install Cosign GH action
         uses: sigstore/cosign-installer@main
         # with:
