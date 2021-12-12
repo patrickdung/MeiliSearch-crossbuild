@@ -345,7 +345,7 @@ jobs:
           # ##SBOM_FILE: ${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}}
         run: |
           echo "${{ secrets.COSIGN_PRIVATE_KEY }}" > cosign.key
-          CONTAINER_IMAGE=${{matrix.platform_image_uri}}
+          # CONTAINER_IMAGE=${{matrix.platform_image_uri}}
           # Create SBOM attestation and push it to the container registry
           # ##cosign attest --predicate "$SBOM_FILE" --key ./cosign.key "$CONTAINER_IMAGE"
           cosign attest --predicate "${{matrix.arch}}-${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}}" --key ./cosign.key "${{matrix.platform_image_uri}}"
