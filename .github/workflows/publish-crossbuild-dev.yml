@@ -423,5 +423,5 @@ jobs:
     steps:
       - name: test
         run: |
-          skopeo --inspec ${{env.CONTAINER_URI_AMD64}}
-          skopeo --inspec ${{env.CONTAINER_URI_ARM64}}
+          skopeo --inspect ${{needs.build-docker-image.outputs.container_uri_amd64}}
+          skopeo --inspect ${{needs.build-docker-image.outputs.container_uri_arm64}}
