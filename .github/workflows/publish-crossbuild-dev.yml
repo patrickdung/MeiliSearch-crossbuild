@@ -13,7 +13,6 @@ env:
 jobs:
   init-env:
     name: Set env outputs
-    needs: [init-env]
     runs-on: ubuntu-latest
     continue-on-error: true
     permissions:
@@ -38,6 +37,7 @@ jobs:
 
   publish-with-crossbuild:
     name: Publish to Github
+    needs: [init-env]
     runs-on: ${{ matrix.os }}
     continue-on-error: true
     strategy:
