@@ -450,18 +450,20 @@ jobs:
         uses: github/codeql-action/upload-sarif@v1
         with:
           # ##sarif_file: ${{matrix.arch}}-${{ steps.scan-by-anchore-${{matrix.arch}}.outputs.sarif }}
-          sarif_file: ${{matrix.arch}}-${{ steps.scan-by-anchore.outputs.sarif }}
+          sarif_file: ${{ steps.scan-by-anchore.outputs.sarif }}
           category: anchore-${{matrix.arch}}
 
       - name: Inspect SARIF report(s)
         run: |
+          echo ${{matrix.arch}}
           cat ${{matrix.arch}}-trivy-results.sarif
-          cat ${{matrix.arch}}-${{ steps.scan-by-anchore.outputs.sarif }}
+          cat ${{ steps.scan-by-anchore.outputs.sarif }}
 
       - name: Upload SARIF reports to artifacts
         uses: actions/upload-artifact@v2
         with:
           name: "SARIF reports when containers are built"
           path: |
-            ${{matrix.arch}}-trivy-results.sarif
-            ${{matrix.arch}}-${{ steps.scan-by-anchore.outputs.sarif }}
+            #${{matrix.arch}}-trivy-results.sarif
+            #${{ steps.scan-by-anchore.outputs.sarif }}
+            ./*.sarif
