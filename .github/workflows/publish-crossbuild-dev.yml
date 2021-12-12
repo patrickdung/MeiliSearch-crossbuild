@@ -254,8 +254,8 @@ jobs:
         run: |
           echo "${{ secrets.COSIGN_PRIVATE_KEY }}" > cosign.key
           CONTAINER_IMAGE="registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}-dev"
-          # Sign the image, the signature is also pushed to the registry
-          cosign sign --key ./cosign.key "$CONTAINER_IMAGE"
+          # Sign the multiarch images, the signature is also pushed to the registry
+          cosign sign --recursive --key ./cosign.key "$CONTAINER_IMAGE"
 
       # Grype can't read it (sbom action uses syft v0.26 and default is spdx-json)
       #- name: Use SBOM action to generate the SBOM
