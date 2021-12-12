@@ -439,7 +439,6 @@ jobs:
       - name: Inspect SARIF report(s)
         run: |
           cat ${{matrix.arch}}-trivy-results.sarif
-          # ##cat ${{matrix.arch}}-${{ steps.scan-by-anchore-${{matrix.arch}}.outputs.sarif }}
           cat ${{matrix.arch}}-${{ steps.scan-by-anchore.outputs.sarif }}
 
       - name: Upload SARIF reports to artifacts
@@ -448,5 +447,4 @@ jobs:
           name: "SARIF reports when containers are built"
           path: |
             ${{matrix.arch}}-trivy-results.sarif
-            # ##${{matrix.arch}}-${{ steps.scan-by-anchore-${{matrix.arch}}.outputs.sarif }}
             ${{matrix.arch}}-${{ steps.scan-by-anchore.outputs.sarif }}
