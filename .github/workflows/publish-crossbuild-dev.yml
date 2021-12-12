@@ -8,10 +8,33 @@ on:
     #  - 'release-versions/*'
 env:
   CARGO_TERM_COLOR: always
-  # SYFT_VERSION: 0.32.0
-  # GRYPE_VERSION: 0.27.0
+  GITLAB_CONTAINER_BASE_URI: registry.gitlab.com/patrickdung/docker-images/meilisearch
 
 jobs:
+  init-env:
+    name: Set env outputs
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    permissions:
+      actions: none
+      checks: none
+      contents: none
+      deployments: none
+      issues: none
+      packages: none
+      pull-requests: none
+      repository-projects: none
+      security-events: none
+      statuses: none
+      # id-token: write # needed for signing the images with GitHub OIDC **not production ready**
+    outputs:
+      gitlab_container_base_uri: ${{ steps.set-outputs.outputs.gitlab_container_base_uri }}
+    steps:
+      - name: Set outputs for this job
+        id: set-outputs
+        run: |
+          echo "::set-output name=gitlab_container_base_uri::$(echo $GITLAB_CONTAINER_BASE_URI)"
+
   publish-with-crossbuild:
     name: Publish to Github
     runs-on: ${{ matrix.os }}
@@ -44,17 +67,14 @@ jobs:
             asset_name: meilisearch-linux-x86_64-musl
     outputs:
       remote_branch_name: ${{ steps.get-remote-branch-name.outputs.remote_branch_name }}
-
     steps:
-
-      - name: Get branch name of latest pre-release version Meili
+      - name: Get branch name of latest pre-release version of Meili
         id: get-remote-branch-name
         run: |
           curl -sL https://api.github.com/repos/meilisearch/MeiliSearch/releases | \
             jq -r "map(select(.prerelease)) | first | .tag_name" > /tmp/meilisearch-latest-branch-name
           echo "REMOTE_BRANCH_NAME=$(cat /tmp/meilisearch-latest-branch-name)" >> $GITHUB_ENV
           echo "::set-output name=remote_branch_name::$(cat /tmp/meilisearch-latest-branch-name)"
-
       - name: Checkout repository
         uses: actions/checkout@v2
         with:
@@ -169,6 +189,7 @@ jobs:
 
   build-docker-image:
     # needs: publish-with-crossbuild
+    needs: [init-env]
     name: Build Docker Images
     runs-on: ubuntu-latest
     continue-on-error: true
@@ -186,8 +207,10 @@ jobs:
       statuses: none
       # id-token: write # needed for signing the images with GitHub OIDC **not production ready**
     outputs:
-      container_uri_amd64: ${{ steps.get-container-uri-amd64.outputs.container_uri }}
-      container_uri_arm64: ${{ steps.get-container-uri-arm64.outputs.container_uri }}
+      # container_uri_amd64: ${{ steps.get-container-uri-amd64.outputs.container_uri }}
+      # container_uri_arm64: ${{ steps.get-container-uri-arm64.outputs.container_uri }}
+      container_digest_amd64: ${{ steps.get-container-digest-amd64.outputs.container_digest }}
+      container_digest_arm64: ${{ steps.get-container-digest-arm64.outputs.container_digest }}
 
     services:
       registry:
@@ -247,28 +270,27 @@ jobs:
             registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}-dev
             localhost:5000/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}-dev
 
-      - name: "Set the env-var for images of amd64"
-        id: get-container-uri-amd64
+      - name: "Get the digest of container (amd64)"
+        id: get-container-digest-amd64
         run: |
-          skopeo inspect --raw docker://registry.gitlab.com/patrickdung/docker-images/meilisearch:${{env.REMOTE_BRANCH_NAME}}-dev | \
-            jq -r '.manifests[] | select(.platform .architecture=="amd64" and .platform .os=="linux") | .digest' > /tmp/container-uri-amd64
-          echo "::set-output name=container_uri::$(echo registry.gitlab.com/patrickdung/docker-images/meilisearch@$(cat /tmp/container-uri-amd64))"
-
-      - name: "Set the env-var for images of arm64"
-        id: get-container-uri-arm64
+          skopeo inspect --raw docker://${{env.GITLAB_CONTAINER_BASE_URI}}:${{env.REMOTE_BRANCH_NAME}} | \
+            jq -r '.manifests[] | select(.platform .architecture=="amd64" and .platform .os=="linux") | .digest' > /tmp/container-digest-amd64
+          echo "::set-output name=container_digest::$(cat /tmp/container-digest-amd64)"
+      - name: "Get the digest of container (arm64)"
+        id: get-container-digest-arm64
         run: |
-          skopeo inspect --raw docker://registry.gitlab.com/patrickdung/docker-images/meilisearch:${{env.REMOTE_BRANCH_NAME}}-dev | \
-            jq -r '.manifests[] | select(.platform .architecture=="arm64" and .platform .os=="linux") | .digest' > /tmp/container-uri-arm64
-          echo "::set-output name=container_uri::$(echo registry.gitlab.com/patrickdung/docker-images/meilisearch@$(cat /tmp/container-uri-arm64))"
+          skopeo inspect --raw docker://${{env.GITLAB_CONTAINER_BASE_URI}}:${{env.REMOTE_BRANCH_NAME}} | \
+            jq -r '.manifests[] | select(.platform .architecture=="arm64" and .platform .os=="linux") | .digest' > /tmp/container-digest-arm64
+          echo "::set-output name=container_digest::$(cat /tmp/container-digest-arm64)"
 
       - name: Use Cosign to sign the image recursively
         env:
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PRIVATE_KEY_PASSWORD }}
         run: |
           echo "${{ secrets.COSIGN_PRIVATE_KEY }}" > cosign.key
-          CONTAINER_IMAGE="registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}-dev"
+          # CONTAINER_IMAGE="registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}-dev"
           # Sign the multiarch images, the signature is also pushed to the registry
-          cosign sign --recursive --key ./cosign.key "$CONTAINER_IMAGE"
+          cosign sign --recursive --key ./cosign.key "${{env.GITLAB_CONTAINER_BASE_URI}}:${{ env.REMOTE_BRANCH_NAME }}"
 
   build-sbom-and-scanning:
     needs: [publish-with-crossbuild, build-docker-image]
@@ -294,22 +316,19 @@ jobs:
       matrix:
         include:
           - arch: amd64
-            platform_image_uri: ${{ needs.build-docker-image.outputs.container_uri_amd64 }}
+            platform_image_uri: "${{needs.init-env.outputs.gitlab_container_base_uri}}@${{ needs.build-docker-image.outputs.container_digest_amd64 }}"
           - arch: arm64
-            platform_image_uri: ${{ needs.build-docker-image.outputs.container_uri_arm64 }}
+            platform_image_uri: "${{needs.init-env.outputs.gitlab_container_base_uri}}@${{ needs.build-docker-image.outputs.container_digest_arm64 }}"
     steps:
-
       - name: Set env REMOTE_BRANCH_NAME
         run: |
           echo "REMOTE_BRANCH_NAME=${{ needs.publish-with-crossbuild.outputs.remote_branch_name }}" >> $GITHUB_ENV
-
       - name: Login to Registry provider
         uses: docker/login-action@v1
         with:
           registry: registry.gitlab.com
           username: ${{ secrets.GITLAB_USERNAME }}
           password: ${{ secrets.GITLAB_TOKEN }}
-
       - name: Install Cosign GH action
         uses: sigstore/cosign-installer@main
         # with:
@@ -322,10 +341,10 @@ jobs:
           curl -sL https://api.github.com/repos/anchore/grype/releases | \
             jq -r ".[].tag_name" | grep -v rc | sort -nr -t. -k 1 -k 2 -k 3 | head -n 1 | sed -E 's|^v||' > /tmp/grype-latest-branch-name
           echo "GRYPE_VERSION=$(cat /tmp/grype-latest-branch-name)" >> $GITHUB_ENV
-      - name: test
+
+      - name: skopeo inspect
         run: |
-          skopeo inspect --raw docker://${{needs.build-docker-image.outputs.container_uri_amd64}}
-          skopeo inspect --raw docker://${{needs.build-docker-image.outputs.container_uri_arm64}}
+          skopeo inspect --raw docker://${{matrix.platform_image_uri}}
 
       # Grype can't read it (sbom action uses syft v0.26 and default is spdx-json)
       # - name: Use SBOM action to generate the SBOM
@@ -424,7 +443,7 @@ jobs:
         uses: aquasecurity/trivy-action@master
         id: scan-by-trivy
         with:
-          # image-ref: 'registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}-dev'
+          # ##image-ref: 'registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}-dev'
           image-ref: '${{matrix.platform_image_uri}}'
           format: 'template'
           template: '@/contrib/sarif.tpl'
@@ -456,7 +475,7 @@ jobs:
         with:
           # the steps outputs would contain './'
           # ##sarif_file: ${{matrix.arch}}-${{ steps.scan-by-anchore-${{matrix.arch}}.outputs.sarif }}
-          #sarif_file: anchore-${{matrix.arch}}-${{ steps.scan-by-anchore.outputs.sarif }}
+          # sarif_file: anchore-${{matrix.arch}}-${{ steps.scan-by-anchore.outputs.sarif }}
           sarif_file: ./${{matrix.arch}}-anchore-results.sarif
           category: anchore-${{matrix.arch}}
 
