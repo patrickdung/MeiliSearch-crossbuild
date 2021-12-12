@@ -40,14 +40,17 @@ jobs:
             target: x86_64-unknown-linux-musl
             use-cross: true
             asset_name: meilisearch-linux-x86_64-musl
+    outputs:
+      remote_branch_name: ${{ steps.get-remote-branch-name.outputs.remote_branch_name }}
 
     steps:
-
-      - name: "Fetch branch name of latest version - Meili"
+      - name: "Fetch branch name of latest version of Meili"
+        id: get-remote-branch-name
         run: |
           curl -sL https://api.github.com/repos/meilisearch/MeiliSearch/releases/latest | \
           jq -r ".tag_name" > /tmp/meilisearch-latest-branch-name
           echo "REMOTE_BRANCH_NAME=$(cat /tmp/meilisearch-latest-branch-name)" >> $GITHUB_ENV
+          echo "::set-output name=remote_branch_name::$(cat /tmp/meilisearch-latest-branch-name)"
 
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -176,6 +179,9 @@ jobs:
       security-events: write
       statuses: none
       # id-token: write # needed for signing the images with GitHub OIDC **not production ready**
+    outputs:
+      container_uri_amd64: ${{ steps.get-container-uri-amd64.outputs.container_uri }}
+      container_uri_arm64: ${{ steps.get-container-uri-arm64.outputs.container_uri }}
 
     steps:
       - name: "Fetch branch name of latest version of Meili"
@@ -183,15 +189,6 @@ jobs:
           curl -sL https://api.github.com/repos/meilisearch/MeiliSearch/releases/latest | \
           jq -r ".tag_name" > /tmp/meilisearch-latest-branch-name
           echo "REMOTE_BRANCH_NAME=$(cat /tmp/meilisearch-latest-branch-name)" >> $GITHUB_ENV
-
-      - name: "Fetch branch name of latest release versions of other software"
-        run: |
-          curl -sL https://api.github.com/repos/anchore/syft/releases | \
-          jq -r ".[].tag_name" | grep -v rc | sort -nr | head -n 1 | sed -E 's|^v||' > /tmp/syft-latest-branch-name
-          echo "SYFT_VERSION=$(cat /tmp/syft-latest-branch-name)" >> $GITHUB_ENV
-          curl -sL https://api.github.com/repos/anchore/grype/releases | \
-          jq -r ".[].tag_name" | grep -v rc | sort -nr | head -n 1 | sed -E 's|^v||' > /tmp/grype-latest-branch-name
-          echo "GRYPE_VERSION=$(cat /tmp/grype-latest-branch-name)" >> $GITHUB_ENV
 
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -215,7 +212,7 @@ jobs:
       - name: Install Cosign GH action
         uses: sigstore/cosign-installer@main
         # with:
-        #  cosign-release: 'v1.4.1
+        #  cosign-release: 'v1.4.1'
 
       - name: Build and push to container registry
         uses: docker/build-push-action@v2
@@ -230,7 +227,21 @@ jobs:
             registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}
             # registry.gitlab.com/patrickdung/docker-images/meilisearch:latest
 
-      - name: Use Cosign to sign the image
+      - name: "Set the env-var for images of amd64"
+        id: get-container-uri-amd64
+        run: |
+          skopeo inspect --raw docker://registry.gitlab.com/patrickdung/docker-images/meilisearch:${{env.REMOTE_BRANCH_NAME}} | \
+            jq -r '.manifests[] | select(.platform .architecture=="amd64" and .platform .os=="linux") | .digest' > /tmp/container-uri-amd64
+          echo "::set-output name=container_uri::$(echo registry.gitlab.com/patrickdung/docker-images/meilisearch@$(cat /tmp/container-uri-amd64))"
+
+      - name: "Set the env-var for images of arm64"
+        id: get-container-uri-arm64
+        run: |
+          skopeo inspect --raw docker://registry.gitlab.com/patrickdung/docker-images/meilisearch:${{env.REMOTE_BRANCH_NAME}} | \
+            jq -r '.manifests[] | select(.platform .architecture=="arm64" and .platform .os=="linux") | .digest' > /tmp/container-uri-arm64
+          echo "::set-output name=container_uri::$(echo registry.gitlab.com/patrickdung/docker-images/meilisearch@$(cat /tmp/container-uri-arm64))"
+
+      - name: Use Cosign to sign the image recursively
         env:
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PRIVATE_KEY_PASSWORD }}
         run: |
@@ -238,6 +249,61 @@ jobs:
           CONTAINER_IMAGE="registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}"
           # Sign the multiarch images, the signature is also pushed to the registry
           cosign sign --recursive --key ./cosign.key "$CONTAINER_IMAGE"
+
+  build-sbom-and-scanning:
+    needs: [publish-with-crossbuild, build-docker-image]
+    name: Build SBOM and image scanning
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    permissions:
+      actions: none
+      checks: none
+      contents: read
+      deployments: none
+      issues: none
+      packages: write
+      pull-requests: none
+      repository-projects: none
+      # GH action/scanners for sarif reports
+      security-events: write
+      statuses: none
+      # id-token: write # needed for signing the images with GitHub OIDC **not production ready**
+    strategy:
+      # Anchore action produce the same filename for sarif on different platform
+      max-parallel: 1
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            platform_image_uri: ${{ needs.build-docker-image.outputs.container_uri_amd64 }}
+          - arch: arm64
+            platform_image_uri: ${{ needs.build-docker-image.outputs.container_uri_arm64 }}
+    steps:
+
+      - name: Set env REMOTE_BRANCH_NAME
+        run: |
+          echo "REMOTE_BRANCH_NAME=${{ needs.publish-with-crossbuild.outputs.remote_branch_name }}" >> $GITHUB_ENV
+
+      - name: Login to Registry provider
+        uses: docker/login-action@v1
+        with:
+          registry: registry.gitlab.com
+          username: ${{ secrets.GITLAB_USERNAME }}
+          password: ${{ secrets.GITLAB_TOKEN }}
+
+      - name: Install Cosign GH action
+        uses: sigstore/cosign-installer@main
+        # with:
+        #  cosign-release: 'v1.4.1'
+
+      - name: "Fetch branch name of latest release versions Other software"
+        run: |
+          curl -sL https://api.github.com/repos/anchore/syft/releases | \
+            jq -r ".[].tag_name" | grep -v rc | sort -nr -t. -k 1 -k 2 -k 3 | head -n 1 | sed -E 's|^v||' > /tmp/syft-latest-branch-name
+          echo "SYFT_VERSION=$(cat /tmp/syft-latest-branch-name)" >> $GITHUB_ENV
+          curl -sL https://api.github.com/repos/anchore/grype/releases | \
+            jq -r ".[].tag_name" | grep -v rc | sort -nr -t. -k 1 -k 2 -k 3 | head -n 1 | sed -E 's|^v||' > /tmp/grype-latest-branch-name
+          echo "GRYPE_VERSION=$(cat /tmp/grype-latest-branch-name)" >> $GITHUB_ENV
 
       - name: Install Syft
         run: |
@@ -251,16 +317,17 @@ jobs:
         run: |
           echo "ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT=container-sbom.json" >> $GITHUB_ENV
 
-      - name: Use Syft to generate the SBOM
+      - name: Use Syft to generate the SBOM files
         run: |
-          syft -v "registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}" -o json > ./${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}}
+          ## syft -v "registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}" -o json > ./${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}}
+          syft -v ${{matrix.platform_image_uri}} -o json > ./${{matrix.arch}}-${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}}
 
       - name: Upload SBOM files to release
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.PUBLISH_TOKEN }}
-          file: ./${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}}
-          ## tag: ${{ github.ref }}
+          file: ./*${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}}
+          file_glob: true
           tag: ${{ env.REMOTE_BRANCH_NAME }}
           overwrite: true
 
@@ -274,13 +341,14 @@ jobs:
       - name: Create SBOM attestation
         env:
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PRIVATE_KEY_PASSWORD }}
-          # SBOM_FILE: ./container-sbom.spdx.json
-          SBOM_FILE: ${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}}
+          # ##SBOM_FILE: ./container-sbom.spdx.json
+          # ##SBOM_FILE: ${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}}
         run: |
           echo "${{ secrets.COSIGN_PRIVATE_KEY }}" > cosign.key
-          CONTAINER_IMAGE="registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}"
+          CONTAINER_IMAGE=${{matrix.platform_image_uri}}
           # Create SBOM attestation and push it to the container registry
-          cosign attest --predicate "$SBOM_FILE" --key ./cosign.key "$CONTAINER_IMAGE"
+          # ##cosign attest --predicate "$SBOM_FILE" --key ./cosign.key "$CONTAINER_IMAGE"
+          cosign attest --predicate "${{matrix.arch}}-${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}}" --key ./cosign.key "${{matrix.platform_image_uri}}"
 
       - name: Install Grype
         run: |
@@ -293,20 +361,20 @@ jobs:
       - name: Scan container by Grype
         run: |
           # May set a severity threshold for failing the build
-          grype sbom:./${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}} -o json > ./vulnerabilities-report-grype.json
-          grype sbom:./${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}} -o table > ./vulnerabilities-report-grype-table.txt
+          grype sbom:./${{matrix.arch}}-${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}} -o json > ./${{matrix.arch}}-vulnerabilities-report-grype.json
+          grype sbom:./${{matrix.arch}}-${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}} -o table > ./${{matrix.arch}}-vulnerabilities-report-grype-table.txt
 
       - name: Upload Grype reports to artifacts
         uses: actions/upload-artifact@v2
         with:
-          path: ./vulnerabilities-report-grype*
+          path: ./*vulnerabilities-report-grype*
           name: "Vulnerabilities reports by Grype"
 
       - name: Upload Grype reports to release
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.PUBLISH_TOKEN }}
-          file: ./vulnerabilities-report-grype*
+          file: ./*vulnerabilities-report-grype*
           file_glob: true
           tag: ${{ env.REMOTE_BRANCH_NAME }}
           overwrite: true
@@ -315,10 +383,10 @@ jobs:
         uses: aquasecurity/trivy-action@master
         id: scan-by-trivy
         with:
-          image-ref: 'registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}'
+          image-ref: '${{matrix.platform_image_uri}}'
           format: 'template'
           template: '@/contrib/sarif.tpl'
-          output: 'trivy-results.sarif'
+          output: '${{matrix.arch}}-trivy-results.sarif'
           severity: 'CRITICAL,HIGH'
 
       - name: Upload Trivy SARIF report to GitHub Security tab
@@ -335,13 +403,46 @@ jobs:
           image: 'registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}'
           acs-report-enable: true
 
+      - name: Upload Trivy SARIF report to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v1
+        with:
+          sarif_file: '${{matrix.arch}}-trivy-results.sarif'
+          category: trivy-${{matrix.arch}}
+
+      - name: Scan container by Anchore
+        uses: anchore/scan-action@v3
+        # ## id: scan-by-anchore-${{matrix.arch}}
+        id: scan-by-anchore
+        with:
+          fail-build: false
+          image: "${{matrix.platform_image_uri}}"
+          acs-report-enable: true
+
+      - name: Rename results.sarif with architecture name
+        run: |
+          mv results.sarif ${{matrix.arch}}-anchore-results.sarif
+
       - name: Upload Anchore SARIF report to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v1
         with:
-          sarif_file: ${{ steps.scan-by-anchore.outputs.sarif }}
-          category: anchore
+          # the steps outputs would contain './'
+          # ##sarif_file: ${{matrix.arch}}-${{ steps.scan-by-anchore-${{matrix.arch}}.outputs.sarif }}
+          # sarif_file: anchore-${{matrix.arch}}-${{ steps.scan-by-anchore.outputs.sarif }}
+          sarif_file: ./${{matrix.arch}}-anchore-results.sarif
+          category: anchore-${{matrix.arch}}
 
       - name: Inspect SARIF report(s)
         run: |
-          cat trivy-results.sarif
-          cat ${{ steps.scan-by-anchore.outputs.sarif }}
+          echo ${{matrix.arch}}
+          cat ${{matrix.arch}}-trivy-results.sarif
+          cat ${{matrix.arch}}-anchore-results.sarif
+
+      - name: Upload SARIF reports to artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: "SARIF reports when containers are built"
+          path: |
+            # #${{matrix.arch}}-trivy-results.sarif
+            # #${{ steps.scan-by-anchore.outputs.sarif }}
+            ./*.sarif
+
