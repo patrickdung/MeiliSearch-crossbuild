@@ -53,7 +53,7 @@ jobs:
           curl -sL https://api.github.com/repos/meilisearch/MeiliSearch/releases | \
             jq -r "map(select(.prerelease)) | first | .tag_name" > /tmp/meilisearch-latest-branch-name
           echo "REMOTE_BRANCH_NAME=$(cat /tmp/meilisearch-latest-branch-name)" >> $GITHUB_ENV
-          echo "::set-output name=remote_branch_name::$(echo $REMOTE_BRANCH_NAME)"
+          echo "::set-output name=remote_branch_name::$(cat /tmp/meilisearch-latest-branch-name)"
 
       - name: Checkout repository
         uses: actions/checkout@v2
