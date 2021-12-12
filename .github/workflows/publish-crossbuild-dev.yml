@@ -306,8 +306,8 @@ jobs:
           echo "GRYPE_VERSION=$(cat /tmp/grype-latest-branch-name)" >> $GITHUB_ENV
       - name: test
         run: |
-          skopeo inspect --raw ${{needs.build-docker-image.outputs.container_uri_amd64}}
-          skopeo inspect --raw ${{needs.build-docker-image.outputs.container_uri_arm64}}
+          skopeo inspect --raw docker://${{needs.build-docker-image.outputs.container_uri_amd64}}
+          skopeo inspect --raw docker://${{needs.build-docker-image.outputs.container_uri_arm64}}
 
       # Grype can't read it (sbom action uses syft v0.26 and default is spdx-json)
       # - name: Use SBOM action to generate the SBOM
