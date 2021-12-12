@@ -181,6 +181,9 @@ jobs:
       security-events: write
       statuses: none
       # id-token: write # needed for signing the images with GitHub OIDC **not production ready**
+    outputs:
+      container_uri_amd64: ${{ steps.get-container-uri-amd64.outputs.container_uri }}
+      container_uri_arm64: ${{ steps.get-container-uri-amd64.outputs.container_uri }}
 
     services:
       registry:
@@ -226,7 +229,7 @@ jobs:
 
       - name: Install Cosign GH action
         uses: sigstore/cosign-installer@main
-        #with:
+        # with:
         #  cosign-release: 'v1.4.1'
 
       # Distroless don't have package managers
@@ -248,14 +251,19 @@ jobs:
             registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}-dev
             localhost:5000/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}-dev
 
-      - name: Set the env-var for images of amd64/arm64
+      - name: "Set the env-var for images of amd64"
+        id: get-container-uri-amd64
         run: |
           skopeo inspect --raw docker://registry.gitlab.com/patrickdung/docker-images/meilisearch:${{env.REMOTE_BRANCH_NAME}}-dev | \
             jq -r '.manifests[] | select(.platform .architecture=="amd64" and .platform .os=="linux") | .digest' > /tmp/container-uri-amd64
-          echo "CONTAINER_URI_AMD64=docker://registry.gitlab.com/patrickdung/docker-images/meilisearch@$(cat /tmp/container-uri-amd64)" >> $GITHUB_ENV
+          echo "::set-output name=container_uri::$(echo docker://registry.gitlab.com/patrickdung/docker-images/meilisearch@$(cat /tmp/container-uri-amd64))"
+
+      - name: "Set the env-var for images of arm64"
+        id: get-container-uri-arm64
+        run: |
           skopeo inspect --raw docker://registry.gitlab.com/patrickdung/docker-images/meilisearch:${{env.REMOTE_BRANCH_NAME}}-dev | \
             jq -r '.manifests[] | select(.platform .architecture=="arm64" and .platform .os=="linux") | .digest' > /tmp/container-uri-arm64
-          echo "CONTAINER_URI_ARM64=docker://registry.gitlab.com/patrickdung/docker-images/meilisearch@$(cat /tmp/container-uri-arm64)" >> $GITHUB_ENV
+          echo "::set-output name=container_uri::$(echo docker://registry.gitlab.com/patrickdung/docker-images/meilisearch@$(cat /tmp/container-uri-arm64))"
 
       - name: Use Cosign to sign the image
         env:
@@ -400,7 +408,7 @@ jobs:
           name: "SARIF reports when containers are built"
 
   build-sbom-and-scanning:
-    needs: build-dock-image
+    needs: build-docker-image
     name: Build SBOM and image scanning
     runs-on: ubuntu-latest
     continue-on-error: true
@@ -409,9 +417,9 @@ jobs:
       matrix:
         include:
           - arch: amd64
-            full_image_tag: ${{ env.CONTAINER_URI_AMD64 }}
+            full_image_tag: ${{ needs.build-docker-image.outputs.container_uri_amd64 }}
           - arch: arm64
-            full_image_tag: ${{ env.CONTAINER_URI_ARM64 }}
+            full_image_tag: ${{ needs.build-docker-image.outputs.container_uri_arm64 }}
     steps:
       - name: test
         run: |
