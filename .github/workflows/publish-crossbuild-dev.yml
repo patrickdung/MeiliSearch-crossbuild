@@ -267,8 +267,8 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}-dev
-            localhost:5000/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}-dev
+            registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}
+            localhost:5000/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}
 
       - name: "Get the digest of container (amd64)"
         id: get-container-digest-amd64
@@ -288,7 +288,7 @@ jobs:
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PRIVATE_KEY_PASSWORD }}
         run: |
           echo "${{ secrets.COSIGN_PRIVATE_KEY }}" > cosign.key
-          # CONTAINER_IMAGE="registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}-dev"
+          # CONTAINER_IMAGE="registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}"
           # Sign the multiarch images, the signature is also pushed to the registry
           cosign sign --recursive --key ./cosign.key "${{env.GITLAB_CONTAINER_BASE_URI}}:${{ env.REMOTE_BRANCH_NAME }}"
 
@@ -350,7 +350,7 @@ jobs:
       # - name: Use SBOM action to generate the SBOM
       #  uses: anchore/sbom-action@v0
       #  with:
-      #    image: registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}-dev
+      #    image: registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}
       #    artifact-name: container-sbom.spdx.json
 
       - name: Install Syft
@@ -367,7 +367,7 @@ jobs:
 
       - name: Use Syft to generate the SBOM files
         run: |
-          ##syft -v "registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}-dev" -o json > ./${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}}
+          ##syft -v "registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}" -o json > ./${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}}
           syft -v ${{matrix.platform_image_uri}} -o json > ./${{matrix.arch}}-${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}}
 
       # Not working and artifact is not published
@@ -403,7 +403,7 @@ jobs:
           # SBOM_FILE: ${{matrix.arch}}-${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}}
         run: |
           echo "${{ secrets.COSIGN_PRIVATE_KEY }}" > cosign.key
-          # CONTAINER_IMAGE="registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}-dev"
+          # CONTAINER_IMAGE="registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}"
           CONTAINER_IMAGE=${{matrix.platform_image_uri}}
           # Create SBOM attestation and push it to the container registry
           # cosign attest --predicate "$SBOM_FILE" --key ./cosign.key "$CONTAINER_IMAGE"
@@ -443,7 +443,7 @@ jobs:
         uses: aquasecurity/trivy-action@master
         id: scan-by-trivy
         with:
-          # ##image-ref: 'registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}-dev'
+          # ##image-ref: 'registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}'
           image-ref: '${{matrix.platform_image_uri}}'
           format: 'template'
           template: '@/contrib/sarif.tpl'
@@ -462,7 +462,7 @@ jobs:
         id: scan-by-anchore
         with:
           fail-build: false
-          # image: "localhost:5000/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}-dev"
+          # image: "localhost:5000/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}"
           image: "${{matrix.platform_image_uri}}"
           acs-report-enable: true
 
