@@ -413,7 +413,7 @@ jobs:
       - name: Scan container by Grype
         run: |
           # May set a severity threshold for failing the build
-          grype sbom:./${{matrix.arch}}-${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}} -o json > ./${{matrix.arch}}-container--vulnerabilities-report-grype.json
+          grype sbom:./${{matrix.arch}}-${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}} -o json > ./${{matrix.arch}}-container-vulnerabilities-report-grype.json
           grype sbom:./${{matrix.arch}}-${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}} -o table > ./${{matrix.arch}}-container-vulnerabilities-report-grype-table.txt
 
       - name: Upload Grype reports to artifacts
