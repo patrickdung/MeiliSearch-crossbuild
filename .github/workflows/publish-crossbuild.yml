@@ -1,5 +1,4 @@
 name: Release using cross build
-
 on:
   push:
     branches:
@@ -8,10 +7,35 @@ on:
       - 'release-versions/*'
 env:
   CARGO_TERM_COLOR: always
-
+  GITLAB_CONTAINER_BASE_URI: registry.gitlab.com/patrickdung/docker-images/meilisearch
 jobs:
+  init-env:
+    name: Set env outputs
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    permissions:
+      actions: none
+      checks: none
+      contents: none
+      deployments: none
+      issues: none
+      packages: none
+      pull-requests: none
+      repository-projects: none
+      security-events: none
+      statuses: none
+      # id-token: write # needed for signing the images with GitHub OIDC **not production ready**
+    outputs:
+      gitlab_container_base_uri: ${{ steps.set-env.outputs.gitlab_container_base_uri }}
+    steps:
+      - name: Set env for later jobs
+        id: set-env
+        run: |
+          echo "::set-output name=gitlab_container_base_uri::$(echo $GITLAB_CONTAINER_BASE_URI)"
+
   publish-with-crossbuild:
     name: Publish to Github
+    needs: [init-env]
     runs-on: ${{ matrix.os }}
     continue-on-error: true
     strategy:
@@ -44,7 +68,7 @@ jobs:
       remote_branch_name: ${{ steps.get-remote-branch-name.outputs.remote_branch_name }}
 
     steps:
-      - name: "Fetch branch name of latest version of Meili"
+      - name: "Get branch name of latest version of Meili"
         id: get-remote-branch-name
         run: |
           curl -sL https://api.github.com/repos/meilisearch/MeiliSearch/releases/latest | \
@@ -52,7 +76,7 @@ jobs:
           echo "REMOTE_BRANCH_NAME=$(cat /tmp/meilisearch-latest-branch-name)" >> $GITHUB_ENV
           echo "::set-output name=remote_branch_name::$(cat /tmp/meilisearch-latest-branch-name)"
 
-      - name: Checkout repository
+      - name: Checkout repository for compiling
         uses: actions/checkout@v2
         with:
           repository: meilisearch/MeiliSearch
@@ -162,7 +186,7 @@ jobs:
           overwrite: true
 
   build-docker-image:
-    needs: publish-with-crossbuild
+    needs: [init-env, publish-with-crossbuild]
     name: Build Docker Images
     runs-on: ubuntu-latest
     continue-on-error: true
@@ -180,8 +204,8 @@ jobs:
       statuses: none
       # id-token: write # needed for signing the images with GitHub OIDC **not production ready**
     outputs:
-      container_uri_amd64: ${{ steps.get-container-uri-amd64.outputs.container_uri }}
-      container_uri_arm64: ${{ steps.get-container-uri-arm64.outputs.container_uri }}
+      container_digest_amd64: ${{ steps.get-container-digest-amd64.outputs.container_digest }}
+      container_digest_arm64: ${{ steps.get-container-digest-arm64.outputs.container_digest }}
 
     steps:
       - name: "Fetch branch name of latest version of Meili"
@@ -227,31 +251,29 @@ jobs:
             registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}
             # registry.gitlab.com/patrickdung/docker-images/meilisearch:latest
 
-      - name: "Set the env-var for images of amd64"
-        id: get-container-uri-amd64
+      - name: "Get the digest of container (amd64)"
+        id: get-container-digest-amd64
         run: |
-          skopeo inspect --raw docker://registry.gitlab.com/patrickdung/docker-images/meilisearch:${{env.REMOTE_BRANCH_NAME}} | \
-            jq -r '.manifests[] | select(.platform .architecture=="amd64" and .platform .os=="linux") | .digest' > /tmp/container-uri-amd64
-          echo "::set-output name=container_uri::$(echo registry.gitlab.com/patrickdung/docker-images/meilisearch@$(cat /tmp/container-uri-amd64))"
-
-      - name: "Set the env-var for images of arm64"
-        id: get-container-uri-arm64
+          skopeo inspect --raw docker://${{env.GITLAB_CONTAINER_BASE_URI}}:${{env.REMOTE_BRANCH_NAME}} | \
+            jq -r '.manifests[] | select(.platform .architecture=="amd64" and .platform .os=="linux") | .digest' > /tmp/container-digest-amd64
+          echo "::set-output name=container_digest::$(cat /tmp/container-digest-amd64)"
+      - name: "Get the digest of container (arm64)"
+        id: get-container-digest-arm64
         run: |
-          skopeo inspect --raw docker://registry.gitlab.com/patrickdung/docker-images/meilisearch:${{env.REMOTE_BRANCH_NAME}} | \
-            jq -r '.manifests[] | select(.platform .architecture=="arm64" and .platform .os=="linux") | .digest' > /tmp/container-uri-arm64
-          echo "::set-output name=container_uri::$(echo registry.gitlab.com/patrickdung/docker-images/meilisearch@$(cat /tmp/container-uri-arm64))"
+          skopeo inspect --raw docker://${{env.GITLAB_CONTAINER_BASE_URI}}:${{env.REMOTE_BRANCH_NAME}} | \
+            jq -r '.manifests[] | select(.platform .architecture=="arm64" and .platform .os=="linux") | .digest' > /tmp/container-digest-arm64
+          echo "::set-output name=container_digest::$(cat /tmp/container-digest-arm64)"
 
       - name: Use Cosign to sign the image recursively
         env:
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PRIVATE_KEY_PASSWORD }}
         run: |
           echo "${{ secrets.COSIGN_PRIVATE_KEY }}" > cosign.key
-          CONTAINER_IMAGE="registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}"
           # Sign the multiarch images, the signature is also pushed to the registry
-          cosign sign --recursive --key ./cosign.key "$CONTAINER_IMAGE"
+          cosign sign --recursive --key ./cosign.key "${{env.GITLAB_CONTAINER_BASE_URI}}:${{ env.REMOTE_BRANCH_NAME }}"
 
   build-sbom-and-scanning:
-    needs: [publish-with-crossbuild, build-docker-image]
+    needs: [init-env, publish-with-crossbuild, build-docker-image]
     name: Build SBOM and image scanning
     runs-on: ubuntu-latest
     continue-on-error: true
@@ -275,11 +297,11 @@ jobs:
       matrix:
         include:
           - arch: amd64
-            platform_image_uri: ${{ needs.build-docker-image.outputs.container_uri_amd64 }}
+            platform_image_uri: "${{needs.init-env.outputs.gitlab_container_base_uri}}@${{ needs.build-docker-image.outputs.container_digest_amd64 }}"
           - arch: arm64
-            platform_image_uri: ${{ needs.build-docker-image.outputs.container_uri_arm64 }}
-    steps:
+            platform_image_uri: "${{needs.init-env.outputs.gitlab_container_base_uri}}@${{ needs.build-docker-image.outputs.container_digest_arm64 }}"
 
+    steps:
       - name: Set env REMOTE_BRANCH_NAME
         run: |
           echo "REMOTE_BRANCH_NAME=${{ needs.publish-with-crossbuild.outputs.remote_branch_name }}" >> $GITHUB_ENV
@@ -361,8 +383,8 @@ jobs:
       - name: Scan container by Grype
         run: |
           # May set a severity threshold for failing the build
-          grype sbom:./${{matrix.arch}}-${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}} -o json > ./${{matrix.arch}}-vulnerabilities-report-grype.json
-          grype sbom:./${{matrix.arch}}-${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}} -o table > ./${{matrix.arch}}-vulnerabilities-report-grype-table.txt
+          grype sbom:./${{matrix.arch}}-${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}} -o json > ./${{matrix.arch}}-container-vulnerabilities-report-grype.json
+          grype sbom:./${{matrix.arch}}-${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}} -o table > ./${{matrix.arch}}-container-vulnerabilities-report-grype-table.txt
 
       - name: Upload Grype reports to artifacts
         uses: actions/upload-artifact@v2
@@ -386,18 +408,17 @@ jobs:
           image-ref: '${{matrix.platform_image_uri}}'
           format: 'template'
           template: '@/contrib/sarif.tpl'
-          output: '${{matrix.arch}}-trivy-results.sarif'
+          output: '${{matrix.arch}}-container-trivy-results.sarif'
           severity: 'CRITICAL,HIGH'
 
       - name: Upload Trivy SARIF report to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v1
         with:
-          sarif_file: '${{matrix.arch}}-trivy-results.sarif'
+          sarif_file: '${{matrix.arch}}-container-trivy-results.sarif'
           category: trivy-${{matrix.arch}}
 
       - name: Scan container by Anchore
         uses: anchore/scan-action@v3
-        # ## id: scan-by-anchore-${{matrix.arch}}
         id: scan-by-anchore
         with:
           fail-build: false
@@ -406,22 +427,21 @@ jobs:
 
       - name: Rename results.sarif with architecture name
         run: |
-          mv results.sarif ${{matrix.arch}}-anchore-results.sarif
+          mv results.sarif ${{matrix.arch}}-container-anchore-results.sarif
 
       - name: Upload Anchore SARIF report to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v1
         with:
           # the steps outputs would contain './'
-          # ##sarif_file: ${{matrix.arch}}-${{ steps.scan-by-anchore-${{matrix.arch}}.outputs.sarif }}
           # sarif_file: anchore-${{matrix.arch}}-${{ steps.scan-by-anchore.outputs.sarif }}
-          sarif_file: ./${{matrix.arch}}-anchore-results.sarif
+          sarif_file: ./${{matrix.arch}}-container-anchore-results.sarif
           category: anchore-${{matrix.arch}}
 
       - name: Inspect SARIF report(s)
         run: |
           echo ${{matrix.arch}}
-          cat ${{matrix.arch}}-trivy-results.sarif
-          cat ${{matrix.arch}}-anchore-results.sarif
+          cat ${{matrix.arch}}-container-trivy-results.sarif
+          cat ${{matrix.arch}}-container-anchore-results.sarif
 
       - name: Upload SARIF reports to artifacts
         uses: actions/upload-artifact@v2
@@ -431,4 +451,3 @@ jobs:
             # #${{matrix.arch}}-trivy-results.sarif
             # #${{ steps.scan-by-anchore.outputs.sarif }}
             ./*.sarif
-
