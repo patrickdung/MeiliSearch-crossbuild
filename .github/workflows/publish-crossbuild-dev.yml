@@ -1,5 +1,4 @@
 name: Pre-release using cross build
-
 on:
   push:
     branches:
@@ -9,7 +8,6 @@ on:
 env:
   CARGO_TERM_COLOR: always
   GITLAB_CONTAINER_BASE_URI: registry.gitlab.com/patrickdung/docker-images/meilisearch
-
 jobs:
   init-env:
     name: Set env outputs
@@ -28,10 +26,10 @@ jobs:
       statuses: none
       # id-token: write # needed for signing the images with GitHub OIDC **not production ready**
     outputs:
-      gitlab_container_base_uri: ${{ steps.set-outputs.outputs.gitlab_container_base_uri }}
+      gitlab_container_base_uri: ${{ steps.set-env.outputs.gitlab_container_base_uri }}
     steps:
-      - name: Set outputs for this job
-        id: set-outputs
+      - name: Set env for later jobs
+        id: set-env
         run: |
           echo "::set-output name=gitlab_container_base_uri::$(echo $GITLAB_CONTAINER_BASE_URI)"
 
@@ -76,12 +74,11 @@ jobs:
             jq -r "map(select(.prerelease)) | first | .tag_name" > /tmp/meilisearch-latest-branch-name
           echo "REMOTE_BRANCH_NAME=$(cat /tmp/meilisearch-latest-branch-name)" >> $GITHUB_ENV
           echo "::set-output name=remote_branch_name::$(cat /tmp/meilisearch-latest-branch-name)"
-      - name: Checkout repository
+      - name: Checkout repository of offical repo for compiling
         uses: actions/checkout@v2
         with:
           repository: meilisearch/MeiliSearch
           ref: ${{ env.REMOTE_BRANCH_NAME }}
-
       - name: Installing Rust toolchain
         uses: actions-rs/toolchain@v1
         with:
@@ -89,16 +86,13 @@ jobs:
           profile: minimal
           target: ${{ matrix.target }}
           override: true
-
       - name: APT update
         run: |
           sudo apt update
-
       - name: Install target specific tools
         if: matrix.use-cross
         run: |
           sudo apt-get install -y ${{ matrix.linker }}
-
       - name: Configure target aarch64 GNU
         if: matrix.target == 'aarch64-unknown-linux-gnu'
         ## Environment variable is not passed using env:
@@ -208,8 +202,6 @@ jobs:
       statuses: none
       # id-token: write # needed for signing the images with GitHub OIDC **not production ready**
     outputs:
-      # container_uri_amd64: ${{ steps.get-container-uri-amd64.outputs.container_uri }}
-      # container_uri_arm64: ${{ steps.get-container-uri-arm64.outputs.container_uri }}
       container_digest_amd64: ${{ steps.get-container-digest-amd64.outputs.container_digest }}
       container_digest_arm64: ${{ steps.get-container-digest-arm64.outputs.container_digest }}
 
@@ -220,8 +212,7 @@ jobs:
           - 5000:5000
     steps:
 
-
-      - name: "Fetch branch name of latest version Meili"
+      - name: "Fetch branch name of latest version of Meili"
         run: |
           curl -sL https://api.github.com/repos/meilisearch/MeiliSearch/releases | \
             jq -r "map(select(.prerelease)) | first | .tag_name" > /tmp/meilisearch-latest-branch-name
@@ -295,7 +286,7 @@ jobs:
           cosign sign --recursive --key ./cosign.key "${{env.GITLAB_CONTAINER_BASE_URI}}:${{ env.REMOTE_BRANCH_NAME }}"
 
   build-sbom-and-scanning:
-    needs: [init-env,publish-with-crossbuild,build-docker-image]
+    needs: [init-env, publish-with-crossbuild, build-docker-image]
     name: Build SBOM and image scanning
     runs-on: ubuntu-latest
     continue-on-error: true
@@ -422,8 +413,8 @@ jobs:
       - name: Scan container by Grype
         run: |
           # May set a severity threshold for failing the build
-          grype sbom:./${{matrix.arch}}-${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}} -o json > ./${{matrix.arch}}-vulnerabilities-report-grype.json
-          grype sbom:./${{matrix.arch}}-${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}} -o table > ./${{matrix.arch}}-vulnerabilities-report-grype-table.txt
+          grype sbom:./${{matrix.arch}}-${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}} -o json > ./${{matrix.arch}}-container--vulnerabilities-report-grype.json
+          grype sbom:./${{matrix.arch}}-${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}} -o table > ./${{matrix.arch}}-container-vulnerabilities-report-grype-table.txt
 
       - name: Upload Grype reports to artifacts
         uses: actions/upload-artifact@v2
@@ -449,18 +440,17 @@ jobs:
           image-ref: '${{matrix.platform_image_uri}}'
           format: 'template'
           template: '@/contrib/sarif.tpl'
-          output: '${{matrix.arch}}-trivy-results.sarif'
+          output: '${{matrix.arch}}-container-trivy-results.sarif'
           severity: 'CRITICAL,HIGH'
 
       - name: Upload Trivy SARIF report to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v1
         with:
-          sarif_file: '${{matrix.arch}}-trivy-results.sarif'
+          sarif_file: '${{matrix.arch}}-container-trivy-results.sarif'
           category: trivy-${{matrix.arch}}
 
       - name: Scan container by Anchore
         uses: anchore/scan-action@v3
-        # ## id: scan-by-anchore-${{matrix.arch}}
         id: scan-by-anchore
         with:
           fail-build: false
@@ -470,7 +460,7 @@ jobs:
 
       - name: Rename results.sarif with architecture name
         run: |
-          mv results.sarif ${{matrix.arch}}-anchore-results.sarif
+          mv results.sarif ${{matrix.arch}}-container-anchore-results.sarif
 
       - name: Upload Anchore SARIF report to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v1
@@ -478,20 +468,20 @@ jobs:
           # the steps outputs would contain './'
           # ##sarif_file: ${{matrix.arch}}-${{ steps.scan-by-anchore-${{matrix.arch}}.outputs.sarif }}
           # sarif_file: anchore-${{matrix.arch}}-${{ steps.scan-by-anchore.outputs.sarif }}
-          sarif_file: ./${{matrix.arch}}-anchore-results.sarif
+          sarif_file: ./${{matrix.arch}}-container-anchore-results.sarif
           category: anchore-${{matrix.arch}}
 
       - name: Inspect SARIF report(s)
         run: |
           echo ${{matrix.arch}}
-          cat ${{matrix.arch}}-trivy-results.sarif
-          cat ${{matrix.arch}}-anchore-results.sarif
+          cat ${{matrix.arch}}-container-trivy-results.sarif
+          cat ${{matrix.arch}}-container-anchore-results.sarif
 
       - name: Upload SARIF reports to artifacts
         uses: actions/upload-artifact@v2
         with:
           name: "SARIF reports when containers are built"
           path: |
-            #${{matrix.arch}}-trivy-results.sarif
+            #${{matrix.arch}}-container-trivy-results.sarif
             #${{ steps.scan-by-anchore.outputs.sarif }}
             ./*.sarif
