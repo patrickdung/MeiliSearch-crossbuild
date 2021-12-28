@@ -7,8 +7,10 @@ on:
     #  - 'release-versions/*'
 env:
   CARGO_TERM_COLOR: always
-  CONTAINER_REGISTRY: quay.io
-  CONTAINER_REPOSITORY: patrickdung/docker-images-meilisearch
+  # CONTAINER_REGISTRY: quay.io
+  # CONTAINER_REPOSITORY: patrickdung/docker-images-meilisearch
+  CONTAINER_REGISTRY: ghcr.io
+  CONTAINER_REPOSITORY: ${{ github.repository }}
   # ##CONTAINER_REGISTRY_BASE_URI: registry.gitlab.com/patrickdung/docker-images/meilisearch
 jobs:
   init-env:
@@ -238,8 +240,12 @@ jobs:
         uses: docker/login-action@v1
         with:
           registry: ${{ env.CONTAINER_REGISTRY }}
-          username: ${{ secrets.QUAY_USERNAME }}
-          password: ${{ secrets.QUAY_TOKEN }}
+          # Quay.io
+          # username: ${{ secrets.QUAY_USERNAME }}
+          # password: ${{ secrets.QUAY_TOKEN }}
+          # GitHub
+          username: ${{ github.actor }}
+          password: ${{ secrets.PUBLISH_TOKEN }}
 
       - name: Install Cosign GH action
         uses: sigstore/cosign-installer@main
@@ -330,8 +336,10 @@ jobs:
         uses: docker/login-action@v1
         with:
           registry: ${{ env.CONTAINER_REGISTRY }}
-          username: ${{ secrets.QUAY_USERNAME }}
-          password: ${{ secrets.QUAY_TOKEN }}
+          # username: ${{ secrets.QUAY_USERNAME }}
+          # password: ${{ secrets.QUAY_TOKEN }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.PUBLISH_TOKEN }}
       - name: Install Cosign GH action
         uses: sigstore/cosign-installer@main
         # with:
