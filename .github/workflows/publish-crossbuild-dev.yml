@@ -7,7 +7,9 @@ on:
     #  - 'release-versions/*'
 env:
   CARGO_TERM_COLOR: always
-  CONTAINER_REGISTRY_BASE_URI: registry.gitlab.com/patrickdung/docker-images/meilisearch
+  CONTAINER_REGISTRY: quay.io
+  CONTAINER_REPOSITORY: patrickdung/docker-images-meilisearch
+  #CONTAINER_REGISTRY_BASE_URI: registry.gitlab.com/patrickdung/docker-images/meilisearch
 jobs:
   init-env:
     name: Set env outputs
@@ -31,7 +33,7 @@ jobs:
       - name: Set env for later jobs
         id: set-env
         run: |
-          echo "::set-output name=container_registry_base_uri::$(echo $CONTAINER_REGISTRY_BASE_URI)"
+          echo "::set-output name=container_registry_base_uri::$(echo $CONTAINER_REGISTRY/$CONTAINER_REPOSITORY)"
 
   publish-with-crossbuild:
     name: Publish to Github
@@ -235,9 +237,9 @@ jobs:
       - name: Login to Registry provider
         uses: docker/login-action@v1
         with:
-          registry: registry.gitlab.com
-          username: ${{ secrets.GITLAB_USERNAME }}
-          password: ${{ secrets.GITLAB_TOKEN }}
+          registry: {{ env.CONTAINER_REGISTRY }}
+          username: ${{ secrets.QUAY_USERNAME }}
+          password: ${{ secrets.QUAY_TOKEN }}
 
       - name: Install Cosign GH action
         uses: sigstore/cosign-installer@main
@@ -261,20 +263,21 @@ jobs:
             SOURCE_BINARY_BASEURL=https://github.com/patrickdung/MeiliSearch-crossbuild/releases/download
           platforms: linux/amd64,linux/arm64
           push: true
+            # registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}
           tags: |
-            registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}
+            ${{ needs.init-env.outputs.container_registry_base_uri }}:${{ env.REMOTE_BRANCH_NAME }}
             localhost:5000/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}
 
       - name: "Get the digest of container (amd64)"
         id: get-container-digest-amd64
         run: |
-          skopeo inspect --raw docker://${{env.CONTAINER_REGISTRY_BASE_URI}}:${{env.REMOTE_BRANCH_NAME}} | \
+          skopeo inspect --raw docker://${{needs.init-env.outputs.container_registry_base_uri}}:${{env.REMOTE_BRANCH_NAME}} | \
             jq -r '.manifests[] | select(.platform .architecture=="amd64" and .platform .os=="linux") | .digest' > /tmp/container-digest-amd64
           echo "::set-output name=container_digest::$(cat /tmp/container-digest-amd64)"
       - name: "Get the digest of container (arm64)"
         id: get-container-digest-arm64
         run: |
-          skopeo inspect --raw docker://${{env.CONTAINER_REGISTRY_BASE_URI}}:${{env.REMOTE_BRANCH_NAME}} | \
+          skopeo inspect --raw docker://${{needs.init-env.outputs.container_registry_base_uri}}:${{env.REMOTE_BRANCH_NAME}} | \
             jq -r '.manifests[] | select(.platform .architecture=="arm64" and .platform .os=="linux") | .digest' > /tmp/container-digest-arm64
           echo "::set-output name=container_digest::$(cat /tmp/container-digest-arm64)"
 
@@ -326,9 +329,9 @@ jobs:
       - name: Login to Registry provider
         uses: docker/login-action@v1
         with:
-          registry: registry.gitlab.com
-          username: ${{ secrets.GITLAB_USERNAME }}
-          password: ${{ secrets.GITLAB_TOKEN }}
+          registry: {{ env.CONTAINER_REGISTRY }}
+          username: ${{ secrets.QUAY_USERNAME }}
+          password: ${{ secrets.QUAY_TOKEN }}
       - name: Install Cosign GH action
         uses: sigstore/cosign-installer@main
         # with:

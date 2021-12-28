@@ -6,6 +6,9 @@ FROM docker.io/bitnami/minideb:buster
 #FROM docker.io/debian:bullseye-slim
 # FROM gcr.io/distroless/base-debian11
 
+LABEL org.opencontainers.image.url='https://github.com/meilisearch/MeiliSearch'
+LABEL org.opencontainers.image.source='https://github.com/patrickdung/MeiliSearch-crossbuild'
+
 #ARG MEILISEARCH_VERSION="v0.25.0rc2"
 ARG MEILISEARCH_VERSION=""
 #ARG ARCH="amd64"
