@@ -22,7 +22,7 @@ ARG SOURCE_BINARY_BASEURL=""
 ##https://github.com/meilisearch/MeiliSearch/releases/download/v0.23.0rc0/meilisearch-linux-armv8
 
 RUN set -eux && \
-    install_packages bash tini curl file procps coreutils && \
+    install_packages ca-certificates bash tini curl file procps coreutils && \
     groupadd \
       --gid 1000 \
       meilisearch && \
