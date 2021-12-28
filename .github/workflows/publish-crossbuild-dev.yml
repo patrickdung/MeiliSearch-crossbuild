@@ -9,7 +9,7 @@ env:
   CARGO_TERM_COLOR: always
   CONTAINER_REGISTRY: quay.io
   CONTAINER_REPOSITORY: patrickdung/docker-images-meilisearch
-  #CONTAINER_REGISTRY_BASE_URI: registry.gitlab.com/patrickdung/docker-images/meilisearch
+  # ##CONTAINER_REGISTRY_BASE_URI: registry.gitlab.com/patrickdung/docker-images/meilisearch
 jobs:
   init-env:
     name: Set env outputs
@@ -263,7 +263,7 @@ jobs:
             SOURCE_BINARY_BASEURL=https://github.com/patrickdung/MeiliSearch-crossbuild/releases/download
           platforms: linux/amd64,linux/arm64
           push: true
-            # registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}
+          # registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}
           tags: |
             ${{ needs.init-env.outputs.container_registry_base_uri }}:${{ env.REMOTE_BRANCH_NAME }}
             localhost:5000/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}
@@ -288,7 +288,7 @@ jobs:
           echo "${{ secrets.COSIGN_PRIVATE_KEY }}" > cosign.key
           # CONTAINER_IMAGE="registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}"
           # Sign the multiarch images, the signature is also pushed to the registry
-          cosign sign --recursive --key ./cosign.key "${{env.CONTAINER_REGISTRY_BASE_URI}}:${{ env.REMOTE_BRANCH_NAME }}"
+          cosign sign --recursive --key ./cosign.key "${{needs.init-env.outputs.container_registry_base_uri}}:${{ env.REMOTE_BRANCH_NAME }}"
 
   build-sbom-and-scanning:
     needs: [init-env, publish-with-crossbuild, build-docker-image]
