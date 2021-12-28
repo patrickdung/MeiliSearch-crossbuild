@@ -1,7 +1,7 @@
 name: Poll (dev/rc-branch) from official repo to get the latest release version
 on:
   schedule:
-    - cron: '5 * * * *'
+    - cron: '58 * * * *'
 jobs:
   get-version:
     runs-on: ubuntu-latest
@@ -13,6 +13,7 @@ jobs:
           echo "REMOTE_BRANCH_NAME=$(cat /tmp/meilisearch-latest-branch-name)" >> $GITHUB_ENV
           curl -sL https://github.com/patrickdung/MeiliSearch-crossbuild/raw/dev/release-versions/meilisearch-latest.txt -o /tmp/meilisearch-local-branch-name
           echo "LOCAL_BRANCH_NAME=$(cat /tmp/meilisearch-local-branch-name)" >> $GITHUB_ENV
+          if [ $(cat /tmp/meilisearch-latest-branch-name) == "null" ] || [ $(cat /tmp/meilisearch-latest-branch-name) == null ] || [ $(cat /tmp/meilisearch-latest-branch-name) == "" ] || [ -z /tmp/meilisearch-latest-branch-name ] ; then exit 1 ; else echo "Remote Branch Name is not null"; fi
       - name: Check for modified files
         id: git-check
         run: |
