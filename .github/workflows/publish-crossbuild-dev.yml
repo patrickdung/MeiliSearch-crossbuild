@@ -184,6 +184,8 @@ jobs:
 
   build-docker-image:
     # needs: publish-with-crossbuild
+    env:
+      DOCKER_CONTENT_TRUST: 1
     needs: [init-env]
     name: Build Docker Images
     runs-on: ubuntu-latest
