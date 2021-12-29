@@ -292,7 +292,7 @@ jobs:
         run: |
           # Sign the multiarch images, the signature is also pushed to the registry
           echo -n "${{ secrets.COSIGN_PRIVATE_KEY_PASSWORD }}" | \
-            cosign sign --recursive -key <(echo -n "${{ secrets.COSIGN_PRIVATE_KEY }}") \
+            cosign sign --recursive --key <(echo -n "${{ secrets.COSIGN_PRIVATE_KEY }}") \
             "${{ needs.init-env.outputs.container_registry_base_uri }}:${{ env.REMOTE_BRANCH_NAME }}"
 
   build-sbom-and-scanning:
