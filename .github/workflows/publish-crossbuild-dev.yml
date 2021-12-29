@@ -36,7 +36,7 @@ jobs:
       - name: Set env for later jobs
         id: set-env
         run: |
-          echo "::set-output name=container_registry_base_uri::$(echo $CONTAINER_REGISTRY/echo $($CONTAINER_REPOSITORY|tr 'A-Z' 'a-z'))"
+          echo "::set-output name=container_registry_base_uri::$(echo $CONTAINER_REGISTRY/$(echo $CONTAINER_REPOSITORY|tr 'A-Z' 'a-z'))"
 
   publish-with-crossbuild:
     name: Publish to Github
