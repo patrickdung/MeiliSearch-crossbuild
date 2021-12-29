@@ -7,7 +7,12 @@ on:
       - 'release-versions/*'
 env:
   CARGO_TERM_COLOR: always
-  CONTAINER_REGISTRY_BASE_URI: registry.gitlab.com/patrickdung/docker-images/meilisearch
+  # CONTAINER_REGISTRY: quay.io
+  # CONTAINER_REPOSITORY: patrickdung/docker-images-meilisearch
+  CONTAINER_REGISTRY: ghcr.io
+  # ## GH Repository must be lower case when using in GH action
+  CONTAINER_REPOSITORY: ${{ github.repository }}
+
 jobs:
   init-env:
     name: Set env outputs
@@ -31,7 +36,7 @@ jobs:
       - name: Set env for later jobs
         id: set-env
         run: |
-          echo "::set-output name=container_registry_base_uri::$(echo $CONTAINER_REGISTRY_BASE_URI)"
+          echo "::set-output name=container_registry_base_uri::$(echo $CONTAINER_REGISTRY/$(echo $CONTAINER_REPOSITORY|tr 'A-Z' 'a-z'))"
 
   publish-with-crossbuild:
     name: Publish to Github
@@ -68,7 +73,7 @@ jobs:
       remote_branch_name: ${{ steps.get-remote-branch-name.outputs.remote_branch_name }}
 
     steps:
-      - name: "Get branch name of latest version of Meili"
+      - name: "Get branch name of latest release version of Meili"
         id: get-remote-branch-name
         run: |
           curl -sL https://api.github.com/repos/meilisearch/MeiliSearch/releases/latest | \
@@ -229,9 +234,16 @@ jobs:
       - name: Login to container registry provider
         uses: docker/login-action@v1
         with:
-          registry: registry.gitlab.com
-          username: ${{ secrets.GITLAB_USERNAME }}
-          password: ${{ secrets.GITLAB_TOKEN }}
+          registry: ${{ env.CONTAINER_REGISTRY }}
+          # GitLab
+          # username: ${{ secrets.GITLAB_USERNAME }}
+          # password: ${{ secrets.GITLAB_TOKEN }}
+          # Quay.io
+          # username: ${{ secrets.QUAY_USERNAME }}
+          # password: ${{ secrets.QUAY_TOKEN }}
+          # GitHub
+          username: ${{ github.actor }}
+          password: ${{ secrets.PUBLISH_TOKEN }}
 
       - name: Install Cosign GH action
         uses: sigstore/cosign-installer@main
@@ -240,6 +252,8 @@ jobs:
 
       - name: Build and push to container registry
         uses: docker/build-push-action@v2
+        env:
+          DOCKER_CONTENT_TRUST: 1
         with:
           context: .
           build-args: |
@@ -248,19 +262,18 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}
-            # registry.gitlab.com/patrickdung/docker-images/meilisearch:latest
+            ${{ needs.init-env.outputs.container_registry_base_uri }}:${{ env.REMOTE_BRANCH_NAME }}
 
       - name: "Get the digest of container (amd64)"
         id: get-container-digest-amd64
         run: |
-          skopeo inspect --raw docker://${{env.CONTAINER_REGISTRY_BASE_URI}}:${{env.REMOTE_BRANCH_NAME}} | \
+          skopeo inspect --raw docker://${{needs.init-env.outputs.container_registry_base_uri}}:${{env.REMOTE_BRANCH_NAME}} | \
             jq -r '.manifests[] | select(.platform .architecture=="amd64" and .platform .os=="linux") | .digest' > /tmp/container-digest-amd64
           echo "::set-output name=container_digest::$(cat /tmp/container-digest-amd64)"
       - name: "Get the digest of container (arm64)"
         id: get-container-digest-arm64
         run: |
-          skopeo inspect --raw docker://${{env.CONTAINER_REGISTRY_BASE_URI}}:${{env.REMOTE_BRANCH_NAME}} | \
+          skopeo inspect --raw docker://${{needs.init-env.outputs.container_registry_base_uri}}:${{env.REMOTE_BRANCH_NAME}} | \
             jq -r '.manifests[] | select(.platform .architecture=="arm64" and .platform .os=="linux") | .digest' > /tmp/container-digest-arm64
           echo "::set-output name=container_digest::$(cat /tmp/container-digest-arm64)"
 
@@ -270,7 +283,7 @@ jobs:
         run: |
           echo "${{ secrets.COSIGN_PRIVATE_KEY }}" > cosign.key
           # Sign the multiarch images, the signature is also pushed to the registry
-          cosign sign --recursive --key ./cosign.key "${{env.CONTAINER_REGISTRY_BASE_URI}}:${{ env.REMOTE_BRANCH_NAME }}"
+          cosign sign --recursive --key ./cosign.key "${{needs.init-env.outputs.container_registry_base_uri}}:${{ env.REMOTE_BRANCH_NAME }}"
 
   build-sbom-and-scanning:
     needs: [init-env, publish-with-crossbuild, build-docker-image]
@@ -291,7 +304,7 @@ jobs:
       statuses: none
       # id-token: write # needed for signing the images with GitHub OIDC **not production ready**
     strategy:
-      # Anchore action produce the same filename for sarif on different platform
+      # Anchore action produces the same filename for sarif on different platforms
       max-parallel: 1
       fail-fast: false
       matrix:
@@ -312,12 +325,19 @@ jobs:
         with:
           ref: main
 
-      - name: Login to Registry provider
+      - name: Login to container registry provider
         uses: docker/login-action@v1
         with:
-          registry: registry.gitlab.com
-          username: ${{ secrets.GITLAB_USERNAME }}
-          password: ${{ secrets.GITLAB_TOKEN }}
+          registry: ${{ env.CONTAINER_REGISTRY }}
+          # GitLab
+          # username: ${{ secrets.GITLAB_USERNAME }}
+          # password: ${{ secrets.GITLAB_TOKEN }}
+          # Quay.io
+          # username: ${{ secrets.QUAY_USERNAME }}
+          # password: ${{ secrets.QUAY_TOKEN }}
+          # GitHub
+          username: ${{ github.actor }}
+          password: ${{ secrets.PUBLISH_TOKEN }}
 
       - name: Install Cosign GH action
         uses: sigstore/cosign-installer@main
@@ -346,8 +366,8 @@ jobs:
           echo "ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT=container-sbom.json" >> $GITHUB_ENV
 
       - name: Use Syft to generate the SBOM files
+        # ## syft -v "registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}" -o json > ./${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}}
         run: |
-          ## syft -v "registry.gitlab.com/patrickdung/docker-images/meilisearch:${{ env.REMOTE_BRANCH_NAME }}" -o json > ./${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}}
           syft -v ${{matrix.platform_image_uri}} -o json > ./${{matrix.arch}}-${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}}
 
       - name: Upload SBOM files to release
