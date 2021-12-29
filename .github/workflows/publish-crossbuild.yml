@@ -36,7 +36,7 @@ jobs:
       - name: Set env for later jobs
         id: set-env
         run: |
-          echo "::set-output name=container_registry_base_uri::$(echo $CONTAINER_REGISTRY/$(echo $CONTAINER_REPOSITORY|tr 'A-Z' 'a-z'))"
+          echo "::set-output name=container_registry_base_uri::$(echo $CONTAINER_REGISTRY/$(echo $CONTAINER_REPOSITORY | tr 'A-Z' 'a-z'))"
 
   publish-with-crossbuild:
     name: Publish to Github
@@ -278,12 +278,10 @@ jobs:
           echo "::set-output name=container_digest::$(cat /tmp/container-digest-arm64)"
 
       - name: Use Cosign to sign the image recursively
-        env:
-          COSIGN_PASSWORD: ${{ secrets.COSIGN_PRIVATE_KEY_PASSWORD }}
         run: |
-          echo "${{ secrets.COSIGN_PRIVATE_KEY }}" > cosign.key
-          # Sign the multiarch images, the signature is also pushed to the registry
-          cosign sign --recursive --key ./cosign.key "${{needs.init-env.outputs.container_registry_base_uri}}:${{ env.REMOTE_BRANCH_NAME }}"
+          echo -n "${{ secrets.COSIGN_PRIVATE_KEY_PASSWORD }}" | \
+            cosign sign --recursive --key <(echo -n "${{ secrets.COSIGN_PRIVATE_KEY }}") \
+            "${{ needs.init-env.outputs.container_registry_base_uri }}:${{ env.REMOTE_BRANCH_NAME }}"
 
   build-sbom-and-scanning:
     needs: [init-env, publish-with-crossbuild, build-docker-image]
@@ -387,16 +385,12 @@ jobs:
       #    name: ${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}}
 
       - name: Create SBOM attestation
-        env:
-          COSIGN_PASSWORD: ${{ secrets.COSIGN_PRIVATE_KEY_PASSWORD }}
-          # ##SBOM_FILE: ./container-sbom.spdx.json
-          # ##SBOM_FILE: ${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}}
         run: |
-          echo "${{ secrets.COSIGN_PRIVATE_KEY }}" > cosign.key
-          # CONTAINER_IMAGE=${{matrix.platform_image_uri}}
           # Create SBOM attestation and push it to the container registry
-          # ##cosign attest --predicate "$SBOM_FILE" --key ./cosign.key "$CONTAINER_IMAGE"
-          cosign attest --predicate "${{matrix.arch}}-${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}}" --key ./cosign.key "${{matrix.platform_image_uri}}"
+          echo -n "${{ secrets.COSIGN_PRIVATE_KEY_PASSWORD }}" | \
+            cosign attest --predicate "${{matrix.arch}}-${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}}" \
+            --key <(echo -n "${{ secrets.COSIGN_PRIVATE_KEY }}") \
+            "${{ matrix.platform_image_uri }}"
 
       - name: Install Grype
         run: |
