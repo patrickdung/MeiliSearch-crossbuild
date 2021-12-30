@@ -12,6 +12,7 @@ env:
   CONTAINER_REGISTRY: ghcr.io
   # ## GH Repository must be lower case when using in GH action
   CONTAINER_REPOSITORY: ${{ github.repository }}
+  ORIGINAL_SOURCECODE_URL: https://github.com/meilisearch/MeiliSearch
 
 jobs:
   init-env:
@@ -259,6 +260,8 @@ jobs:
           build-args: |
             MEILISEARCH_VERSION=${{ env.REMOTE_BRANCH_NAME }}
             SOURCE_BINARY_BASEURL=https://github.com/patrickdung/MeiliSearch-crossbuild/releases/download
+            LABEL_IMAGE_URL=${{ env.ORIGINAL_SOURCECODE_URL }}
+            LABEL_IMAGE_SOURCE=https://github.com/${{ github.repository }}
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |

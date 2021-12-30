@@ -6,8 +6,10 @@ FROM docker.io/bitnami/minideb:buster
 #FROM docker.io/debian:bullseye-slim
 # FROM gcr.io/distroless/base-debian11
 
-LABEL org.opencontainers.image.url='https://github.com/meilisearch/MeiliSearch'
-LABEL org.opencontainers.image.source='https://github.com/patrickdung/MeiliSearch-crossbuild'
+ARG LABEL_IMAGE_URL
+ARG LABEL_IMAGE_SOURCE
+LABEL org.opencontainers.image.url=${LABEL_IMAGE_URL}
+LABEL org.opencontainers.image.source=${LABEL_IMAGE_SOURCE}
 
 #ARG MEILISEARCH_VERSION="v0.25.0rc2"
 ARG MEILISEARCH_VERSION=""
