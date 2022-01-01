@@ -1,3 +1,7 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Copyright (c) 2021 Patrick Dung
+
 name: Pre-release using cross build
 on:
   push:
