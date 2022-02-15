@@ -81,8 +81,9 @@ jobs:
       - name: "Get branch name of latest release version of Meili"
         id: get-remote-branch-name
         run: |
-          curl -sL https://api.github.com/repos/meilisearch/MeiliSearch/releases/latest | \
-            jq -r ".tag_name" > /tmp/meilisearch-latest-branch-name
+          curl -sL https://api.github.com/repos/meilisearch/MeiliSearch/releases | \
+            jq -r ".[].tag_name" | grep -v rc | sort -r -V | head -n 1 > /tmp/meilisearch-latest-branch-name
+
           echo "REMOTE_BRANCH_NAME=$(cat /tmp/meilisearch-latest-branch-name)" >> $GITHUB_ENV
           echo "::set-output name=remote_branch_name::$(cat /tmp/meilisearch-latest-branch-name)"
 
