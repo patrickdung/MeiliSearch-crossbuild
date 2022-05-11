@@ -2,7 +2,8 @@
 #
 # Copyright (c) 2021 Patrick Dung
 
-FROM docker.io/bitnami/minideb:buster
+FROM docker.io/bitnami/minideb:bullseye
+#FROM docker.io/bitnami/minideb:buster
 #FROM docker.io/debian:bullseye-slim
 # FROM gcr.io/distroless/base-debian11
 
