@@ -40,8 +40,8 @@ RUN set -eux && \
       --gid 1000 \
       --key MAIL_DIR=/dev/null \
       meilisearch && \
-    mkdir -p /meilisearch /data.ms /home/meilisearch/bin && \
-    chown meilisearch:meilisearch /meilisearch /data.ms /home/meilisearch/bin && \
+    mkdir -p /meilisearch /meili_data /home/meilisearch/bin && \
+    chown meilisearch:meilisearch /meilisearch /meili_data /home/meilisearch/bin && \
     chmod 755 /home/meilisearch/bin && \
     cd /home/meilisearch/bin/ && \
     curl -L -v -O ${SOURCE_BINARY_BASEURL}/${MEILISEARCH_VERSION}/meilisearch-linux-$(/bin/uname -m)-stripped \
@@ -64,8 +64,8 @@ USER meilisearch
 
 # Matches the official helm chart in
 # https://github.com/meilisearch/meilisearch-kubernetes/blob/main/charts/meilisearch/values.yaml
-VOLUME /data.ms
-WORKDIR /data.ms
+VOLUME /meili_data
+WORKDIR /meili_data
 
 ENV     MEILI_HTTP_ADDR 0.0.0.0:7700
 EXPOSE  7700/tcp
