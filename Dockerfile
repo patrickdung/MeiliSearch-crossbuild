@@ -40,15 +40,15 @@ RUN set -eux && \
       --gid 1000 \
       --key MAIL_DIR=/dev/null \
       meilisearch && \
-    mkdir -p /meilisearch /meili_data /home/meilisearch/bin && \
-    chown meilisearch:meilisearch /meilisearch /meili_data /home/meilisearch/bin && \
+    mkdir -p /meili_data /home/meilisearch/bin /home/meilisearch/meili_data && \
+    chown meilisearch:meilisearch -R /meili_data /home/meilisearch && \
     chmod 755 /home/meilisearch/bin && \
     cd /home/meilisearch/bin/ && \
     curl -L -v -O ${SOURCE_BINARY_BASEURL}/${MEILISEARCH_VERSION}/meilisearch-linux-$(/bin/uname -m)-stripped \
     && curl -L -v -o meilisearch.sha256sum ${SOURCE_BINARY_BASEURL}/${MEILISEARCH_VERSION}/meilisearch-linux-$(/bin/uname -m)-stripped.sha256sum \
     && sha256sum --check --strict meilisearch.sha256sum \
     && ln -s meilisearch-linux-$(/bin/uname -m)-stripped meilisearch \
-    && chown -R meilisearch:meilisearch /home/meilisearch/bin \
+    && chown -R meilisearch:meilisearch /home/meilisearch \
     && chmod 755 /home/meilisearch/bin/meilisearch \
     && ls -lR /home/meilisearch/bin
 
@@ -64,8 +64,8 @@ USER meilisearch
 
 # Matches the official helm chart in
 # https://github.com/meilisearch/meilisearch-kubernetes/blob/main/charts/meilisearch/values.yaml
-VOLUME /meili_data
-WORKDIR /meili_data
+VOLUME /home/meilisearch/meili_data
+WORKDIR /home/meilisearch/meili_data
 
 ENV     MEILI_HTTP_ADDR 0.0.0.0:7700
 EXPOSE  7700/tcp
