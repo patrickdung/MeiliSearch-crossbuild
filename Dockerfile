@@ -64,8 +64,12 @@ USER meilisearch
 
 # Matches the official helm chart in
 # https://github.com/meilisearch/meilisearch-kubernetes/blob/main/charts/meilisearch/values.yaml
-VOLUME /home/meilisearch/meili_data
-WORKDIR /home/meilisearch/meili_data
+# and Dockerfile in 
+# https://github.com/meilisearch/meilisearch/blob/main/Dockerfile
+#VOLUME /home/meilisearch/meili_data
+#WORKDIR /home/meilisearch/meili_data
+VOLUME /meili_data
+WORKDIR /meili_data
 
 ENV     MEILI_HTTP_ADDR 0.0.0.0:7700
 EXPOSE  7700/tcp
