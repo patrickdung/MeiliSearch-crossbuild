@@ -88,7 +88,7 @@ jobs:
           echo "remote_branch_name=$(cat /tmp/meilisearch-latest-branch-name)" >> $GITHUB_OUTPUT
 
       - name: Checkout repository of official repo for compiling
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: meilisearch/MeiliSearch
           ref: ${{ env.REMOTE_BRANCH_NAME }}
@@ -233,10 +233,10 @@ jobs:
           ref: main
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
+        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
 
       - name: Login to container registry provider
         uses: docker/login-action@v3
@@ -252,10 +252,10 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.PUBLISH_TOKEN }}
 
-      - name: Install Cosign GH action
-        uses: sigstore/cosign-installer@main
-        with:
-          cosign-release: 'v1.13.1'
+      #- name: Install Cosign GH action
+      #  uses: sigstore/cosign-installer@main
+      #  with:
+      #    cosign-release: 'v1.13.1'
 
       - name: Build and push to container registry
         uses: docker/build-push-action@v6
@@ -286,11 +286,11 @@ jobs:
             jq -r '.manifests[] | select(.platform .architecture=="arm64" and .platform .os=="linux") | .digest' > /tmp/container-digest-arm64
           echo "container_digest=$(cat /tmp/container-digest-arm64)" >> $GITHUB_OUTPUT
 
-      - name: Use Cosign to sign the image recursively
-        run: |
-          echo -n "${{ secrets.COSIGN_PRIVATE_KEY_PASSWORD }}" | \
-            cosign sign --recursive --key <(echo -n "${{ secrets.COSIGN_PRIVATE_KEY }}") \
-            "${{ needs.init-env.outputs.container_registry_base_uri }}:${{ env.REMOTE_BRANCH_NAME }}"
+      #- name: Use Cosign to sign the image recursively
+      #  run: |
+      #    echo -n "${{ secrets.COSIGN_PRIVATE_KEY_PASSWORD }}" | \
+      #      cosign sign --recursive --key <(echo -n "${{ secrets.COSIGN_PRIVATE_KEY }}") \
+      #      "${{ needs.init-env.outputs.container_registry_base_uri }}:${{ env.REMOTE_BRANCH_NAME }}"
 
   build-sbom-and-scanning:
     needs: [init-env, publish-with-crossbuild, build-docker-image]
@@ -346,10 +346,10 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.PUBLISH_TOKEN }}
 
-      - name: Install Cosign GH action
-        uses: sigstore/cosign-installer@main
-        with:
-          cosign-release: 'v1.13.1'
+      #- name: Install Cosign GH action
+      #  uses: sigstore/cosign-installer@main
+      #  with:
+      #    cosign-release: 'v1.13.1'
 
       - name: "Fetch branch name of latest release versions Other software"
         run: |
@@ -393,13 +393,13 @@ jobs:
       #    #name: container-sbom.spdx.json
       #    name: ${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}}
 
-      - name: Create SBOM attestation
-        run: |
-          # Create SBOM attestation and push it to the container registry
-          echo -n "${{ secrets.COSIGN_PRIVATE_KEY_PASSWORD }}" | \
-            cosign attest --predicate "${{matrix.arch}}-${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}}" \
-            --key <(echo -n "${{ secrets.COSIGN_PRIVATE_KEY }}") \
-            "${{ matrix.platform_image_uri }}"
+      #- name: Create SBOM attestation
+      #  run: |
+      #    # Create SBOM attestation and push it to the container registry
+      #    echo -n "${{ secrets.COSIGN_PRIVATE_KEY_PASSWORD }}" | \
+      #      cosign attest --predicate "${{matrix.arch}}-${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}}" \
+      #      --key <(echo -n "${{ secrets.COSIGN_PRIVATE_KEY }}") \
+      #      "${{ matrix.platform_image_uri }}"
 
       - name: Install Grype
         run: |
@@ -416,7 +416,7 @@ jobs:
           grype sbom:./${{matrix.arch}}-${{env.ANCHORE_SBOM_ACTION_PRIOR_ARTIFACT}} -o table > ./${{matrix.arch}}-container-vulnerabilities-report-grype-table.txt
 
       - name: Upload Grype reports to artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           path: ./*vulnerabilities-report-grype*
           name: "Vulnerabilities reports by Grype"
@@ -480,7 +480,7 @@ jobs:
           mv snyk.sarif ${{matrix.arch}}-container-snyk-results.sarif
 
       - name: Upload result to GitHub Code Scanning security tab
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
           sarif_file: ${{matrix.arch}}-container-snyk-results.sarif
@@ -518,7 +518,7 @@ jobs:
       #    cat ${{matrix.arch}}-container-anchore-results.sarif
 
       - name: Upload SARIF reports to artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
             # #${{matrix.arch}}-trivy-results.sarif
             # #${{ steps.scan-by-anchore.outputs.sarif }}

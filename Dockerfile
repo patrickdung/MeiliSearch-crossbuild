@@ -2,8 +2,8 @@
 #
 # Copyright (c) 2021 Patrick Dung
 
-#FROM docker.io/bitnami/minideb:bullseye
-FROM docker.io/bitnami/minideb:bookworm
+#FROM docker.io/bitnami/minideb:bookworm
+FROM docker.io/bitnami/minideb:trixie
 
 #FROM docker.io/debian:bullseye-slim
 # FROM gcr.io/distroless/base-debian11
@@ -13,9 +13,9 @@ ARG LABEL_IMAGE_SOURCE
 LABEL org.opencontainers.image.url=${LABEL_IMAGE_URL}
 LABEL org.opencontainers.image.source=${LABEL_IMAGE_SOURCE}
 
-#ARG MEILISEARCH_VERSION="v0.25.0rc2"
+##ARG MEILISEARCH_VERSION="v0.25.0rc2"
 ARG MEILISEARCH_VERSION=""
-#ARG ARCH="amd64"
+##ARG ARCH="amd64"
 ARG ARCH=""
 
 # With Docker's buildx, TARGETARCH gives out amd64/arm64
